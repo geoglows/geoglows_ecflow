@@ -1,0 +1,56 @@
+# rapidpy_ecflow
+*config.yml
+*ecflow_start.sh
+*data/
+*log/
+*run_rapid/
+*run_rapid.def
+*.ecf.*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+dist/
+eggs/
+*.egg-info/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# PDM
+.pdm/
+pdm.lock
+pdm.development.lock
+pdm.virtual-env/
+__pypackages__/
+
+# VSCode
+.vscode/
+*.code-workspace
+*.launch.json
+*.settings.json
+*.vsix
+*.vsixmanifest
+*.log
