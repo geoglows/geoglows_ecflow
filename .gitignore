@@ -1,10 +1,10 @@
-# rapidpy_ecflow
+# geoglows_ecflow
 *config.yml
 *ecflow_start.sh
 *data/
 *log/
-*run_rapid/
-*run_rapid.def
+*geoglows_forecast/
+*geoglows_forecast.def
 *.ecf.*
 
 # Byte-compiled / optimized / DLL files

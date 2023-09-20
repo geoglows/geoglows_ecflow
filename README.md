@@ -6,7 +6,7 @@
 ## Installation
 
 ```bash
-cd rapidpy_ecflow/
+cd geoglows_ecflow/
 pip install .
 ```
 
@@ -16,7 +16,7 @@ pip install .
 - nco>=5.1.8
 - ksh>=2020.0.0
 
-## rapidpy_ecflow configuration file (config.yml)
+## geoglows_ecflow configuration file (config.yml)
 
 ```yaml
 # ecflow variables
@@ -26,12 +26,12 @@ ecflow_bin: /path/to/ecflow_client  # Required for local run
 local_run: false
 ecflow_entities:
   suite:
-    name: run_rapid
+    name: geoglows_forecast
     logs: /path/to/ecf_out
   family:
     name: ensemble_family
     pyscript: run_ecflow.py
-    suite: run_rapid
+    suite: geoglows_forecast
   task:
     - name: prep_task
       pyscript: iprep_ecf.py
@@ -40,7 +40,7 @@ ecflow_entities:
         - IO_LOCATION
         - RUNOFF_LOCATION
         - ECF_FILES
-      suite: run_rapid
+      suite: geoglows_forecast
     - name: plain_table_task
       pyscript: spt_extract_plain_table.py
       variables:
@@ -49,7 +49,7 @@ ecflow_entities:
         - LOG_FILE
         - NCES_EXEC
         - ERA_TYPE
-      suite: run_rapid
+      suite: geoglows_forecast
     - name: day_one_forecast_task
       pyscript: day_one_forecast.py
       variables:
@@ -58,7 +58,7 @@ ecflow_entities:
         - ERA_LOCATION
         - FORECAST_RECORDS_DIR
         - LOG_DIR
-      suite: run_rapid
+      suite: geoglows_forecast
     - name: ens_member
       variables:
         - PYSCRIPT
@@ -67,7 +67,7 @@ ecflow_entities:
         - RAPID_EXEC
         - EXEC_DIR
         - SUBPROCESS_DIR
-      suite: run_rapid
+      suite: geoglows_forecast
 
 # rapid variables
 rapid_exec: /path/to/rapid_exec

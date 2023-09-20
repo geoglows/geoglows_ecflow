@@ -1,5 +1,5 @@
 [project]
-name = "rapidpy_ecflow"
+name = "geoglows_ecflow"
 version = "0.1.0"
 description = "ECFLOW RAPID workflow for GEOGloWS"
 authors = [

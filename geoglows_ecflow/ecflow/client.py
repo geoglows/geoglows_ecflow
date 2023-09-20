@@ -8,7 +8,7 @@ def main(definition: str, host_port: str = "localhost:2500") -> None:
 
     Args:
         definition (str): Path to job definition file. E.g.
-            "/path/to/run_rapid.def".
+            "/path/to/geoglows_forecast.def".
         host_port (str, optional): Server host and port. Defaults to
             "localhost:2500".
     """

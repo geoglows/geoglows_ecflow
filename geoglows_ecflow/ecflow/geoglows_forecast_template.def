@@ -1,7 +1,7 @@
 #5.11.3
-suite run_rapid
+suite geoglows_forecast
   edit ECF_INCLUDE '/path/to/ecflow'
-  edit ECF_FILES '/path/to/ecflow/run_rapid'
+  edit ECF_FILES '/path/to/ecflow/geoglows_forecast'
   edit ECF_HOME '/path/to/ecflow'
   task prep_task
     edit PYSCRIPT '/path/to/iprep_ecf.py'
