@@ -3,7 +3,7 @@ import os
 import ecflow
 
 
-def main(definition: str, host_port: str = "localhost:2500") -> None:
+def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
     """Add definition to the server and begin the suite.
 
     Args:
@@ -53,4 +53,5 @@ def main(definition: str, host_port: str = "localhost:2500") -> None:
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:])
+    if sys.argv[1] == "add_def":
+        add_definition(*sys.argv[2:])

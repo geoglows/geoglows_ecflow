@@ -10,8 +10,15 @@ cd geoglows_ecflow/
 pip install .
 ```
 
+```bash
+# development installation
+cd geoglows_ecflow/
+pip install -e .
+```
+
 ## Non-Python Dependencies
 
+- rapid>=20210423
 - ecflow>=5.11.3
 - nco>=5.1.8
 - ksh>=2020.0.0
@@ -30,11 +37,9 @@ ecflow_entities:
     logs: /path/to/ecf_out
   family:
     name: ensemble_family
-    pyscript: run_ecflow.py
     suite: geoglows_forecast
   task:
     - name: prep_task
-      pyscript: iprep_ecf.py
       variables:
         - PYSCRIPT
         - IO_LOCATION
@@ -42,7 +47,6 @@ ecflow_entities:
         - ECF_FILES
       suite: geoglows_forecast
     - name: plain_table_task
-      pyscript: spt_extract_plain_table.py
       variables:
         - PYSCRIPT
         - OUT_LOCATION
@@ -51,7 +55,6 @@ ecflow_entities:
         - ERA_TYPE
       suite: geoglows_forecast
     - name: day_one_forecast_task
-      pyscript: day_one_forecast.py
       variables:
         - PYSCRIPT
         - IO_LOCATION

@@ -10,10 +10,14 @@ dependencies = [
     "pandas>=2.1.0",
     "fastparquet>=2023.8.0",
 ]
+
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 
+[tool.setuptools.packages.find]
+where = ["geoglows_ecflow"]
+
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

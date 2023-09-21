@@ -4,6 +4,7 @@
 *data/
 *log/
 *geoglows_forecast/
+ecflow_home/
 *geoglows_forecast.def
 *.ecf.*
 
