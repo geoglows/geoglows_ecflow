@@ -28,7 +28,7 @@ pip install -e .
 ```yaml
 # ecflow variables
 python_exec: /path/to/python
-ecflow_home: /path/to/ecflow
+ecflow_home: /path/to/ecflow_home
 ecflow_bin: /path/to/ecflow_client  # Required for local run
 local_run: false
 ecflow_entities:
@@ -89,10 +89,8 @@ nces_exec: /path/to/nces_exec
 
 ```bash
 #!/bin/bash
-export ECF_HOME=/path/to/ecflow/home
-export ECF_BIN=/path/to/ecflow_client
 export ECF_PORT=2500
 export ECF_HOST=localhost
 
-ecflow_start.sh -d $ECF_HOME
+ecflow_start.sh -d /path/to/ecflow_home
 ```

@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 from glob import glob
 from datetime import datetime as dt
 import logging as log
@@ -19,33 +20,39 @@ def get_date_timestep_from_forecast_dir(forecast_dir: str) -> str:
         A string representing the datetime in the format "%Y%m%d.%H".
 
     Raises:
-        ValueError: If  forecast_dir is not in the expected format.
+        AttributeError: If forecast_dir is not found or in the expected format.
     """
     # Get the forecast datetime from the forecast directory
     forecast_date_timestep = os.path.basename(forecast_dir)
     log.info(f'Forecast timestep {forecast_date_timestep}')
 
-    # Parse and format the forecast datetime
+    # Parse forecast datetime
+    date_time_regex = '\d{8}\.\d{2}'
     try:
-        forecast_datetime = dt.strptime(
-            forecast_date_timestep[:11], "%Y%m%d%H"
-        )
-        return forecast_datetime.strftime("%Y%m%d.%H")
-    except ValueError:
-        raise ValueError("Invalid forecast directory.")
+        match = re.search(date_time_regex, forecast_date_timestep)
+        date_time_str = match.group()
+        return date_time_str
+    except AttributeError:
+        raise AttributeError("No datetime match found.")
 
 
-def get_valid_vpucode_list(input_directory: str):
+def get_valid_vpucode_list(input_directory: str) -> list[str]:
     """
     Get a list of vpucodes from the input directory.
+
+    Args:
+        input_directory (str): Path to the rapid input directory.
+
+    Returns:
+        list[str]: List of valid directories (vpucodes).
     """
     valid_input_directories = []
+    # Append to valid_input_directories if directory, skip if not
     for directory in os.listdir(input_directory):
-        if os.path.isdir(os.path.join(input_directory, directory)) \
-                and len(directory.split("-")) == 2:
+        if os.path.isdir(os.path.join(input_directory, directory)):
             valid_input_directories.append(directory)
         else:
-            print("{0} incorrectly formatted. Skipping ...".format(directory))
+            print(f"{directory} not a directory. Skipping...")
     return valid_input_directories
 
 
@@ -61,28 +68,19 @@ def get_ensemble_number_from_forecast(forecast_name):
     return ensemble_number
 
 
-def get_watershed_subbasin_from_folder(folder_name):
-    """
-    Get's the watershed & subbasin name from folder
-    """
-    input_folder_split = folder_name.split("-")
-    watershed = input_folder_split[0].lower()
-    subbasin = input_folder_split[1].lower()
-    return watershed, subbasin
-
-
 def ecmwf_rapid_process(
     rapid_io_files_location="",
     ecmwf_forecast_location="",
-    region="",
-    date_string="",
+    file_output_location="",
+    region=""
 ):
 
-    # get list of correclty formatted rapid input directories in rapid directory
+    # Get list of rapid input directories
     rapid_input_directories = get_valid_vpucode_list(
-            os.path.join(rapid_io_files_location, "input"))
+            os.path.join(rapid_io_files_location, "input")
+    )
 
-    # get list of folders to run
+    # Get list of runoff directories to run
     ecmwf_folders = sorted(glob(ecmwf_forecast_location))
 
     master_job_list = []
@@ -97,7 +95,7 @@ def ecmwf_rapid_process(
         forecast_date_timestep = get_date_timestep_from_forecast_dir(
                 ecmwf_folder)
 
-        # submit jobs to downsize ecmwf files to watershed
+        # submit jobs to downsize ecmwf files to vpu
         rapid_watershed_jobs = {}
         for rapid_input_directory in rapid_input_directories:
 
@@ -106,9 +104,6 @@ def ecmwf_rapid_process(
             rapid_watershed_jobs[rapid_input_directory] = {
                 'jobs': []
             }
-
-            watershed, subbasin = get_watershed_subbasin_from_folder(
-                    rapid_input_directory)
 
             master_watershed_input_directory = os.path.join(
                     rapid_io_files_location,
@@ -133,22 +128,20 @@ def ecmwf_rapid_process(
                 ensemble_number = get_ensemble_number_from_forecast(forecast)
 
                 # get basin names
-                outflow_file_name = 'Qout_%s_%s_%s.nc' % (watershed.lower(),
-                                                          subbasin.lower(),
-                                                          ensemble_number)
+                outflow_file_name = 'Qout_%s_%s.nc' % (rapid_input_directory,
+                                                       ensemble_number)
 
                 master_rapid_outflow_file = os.path.join(
                         master_watershed_outflow_directory, outflow_file_name)
 
-                job_name = 'job_%s_%s_%s_%s' % (forecast_date_timestep,
-                                                watershed, subbasin,
-                                                ensemble_number)
+                job_name = 'job_%s_%s_%s' % (forecast_date_timestep,
+                                             rapid_input_directory,
+                                             ensemble_number)
 
                 rapid_watershed_jobs[rapid_input_directory]['jobs'].append((
                         forecast,
                         forecast_date_timestep,
-                        watershed.lower(),
-                        subbasin.lower(),
+                        rapid_input_directory,
                         initialize_flows,
                         job_name,
                         master_rapid_outflow_file,
@@ -160,7 +153,7 @@ def ecmwf_rapid_process(
 
 
 #    print(master_job_list)
-    with open(os.path.join(str(sys.argv[3]), 'rapid_run.txt'), 'w') as f:
+    with open(os.path.join(file_output_location, 'rapid_run.txt'), 'w') as f:
         for line in master_job_list:
             formatted_line = ','.join(map(str, line))
             f.write(f"{formatted_line}\n")
@@ -174,6 +167,5 @@ if __name__ == "__main__":
     ecmwf_rapid_process(
         rapid_io_files_location=str(sys.argv[1]),
         ecmwf_forecast_location=str(sys.argv[2]),
-        region="",
-        date_string="*.00"
+        file_output_location=str(sys.argv[3])
     )
