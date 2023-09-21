@@ -15,8 +15,8 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 
-[tool.setuptools.packages.find]
-where = ["geoglows_ecflow"]
+[tool.setuptools]
+packages = ["geoglows_ecflow"]
 
 [build-system]
 requires = ["setuptools>=61"]
