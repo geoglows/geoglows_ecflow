@@ -56,9 +56,14 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     return valid_input_directories
 
 
-def get_ensemble_number_from_forecast(forecast_name):
-    """
-    Gets the datetimestep from forecast
+def get_ensemble_number_from_forecast(forecast_name: str) -> int:
+    """Gets the datetimestep from forecast.
+
+    Args:
+        forecast_name (str): Name of the forecast file. E.g. "1.runoff.nc".
+
+    Returns:
+        int: The ensemble number.
     """
     forecast_split = os.path.basename(forecast_name).split(".")
     if forecast_name.endswith(".205.runoff.grib.runoff.netcdf"):
@@ -69,11 +74,22 @@ def get_ensemble_number_from_forecast(forecast_name):
 
 
 def ecmwf_rapid_process(
-    rapid_io_files_location="",
-    ecmwf_forecast_location="",
-    file_output_location="",
-    region=""
-):
+    rapid_io_files_location: str,
+    ecmwf_forecast_location: str,
+    file_output_location: str,
+    region: str | None = None
+) -> list[tuple]:
+    """Creates a list of jobs to run.
+
+    Args:
+        rapid_io_files_location (str): Path to the rapid io files.
+        ecmwf_forecast_location (str): Path to the ecmwf forecast files.
+        file_output_location (str): Path to the output file.
+        region (str, optional): Region of the forecast. Defaults to None.
+
+    Returns:
+        list[tuple]: List of jobs to run.
+    """
 
     # Get list of rapid input directories
     rapid_input_directories = get_valid_vpucode_list(
@@ -91,7 +107,10 @@ def ecmwf_rapid_process(
                                             '*.runoff.%s*nc' % region))
 
         # make the largest files first
-        ecmwf_forecasts.sort(key=lambda x: int(os.path.basename(x).split('.')[0]), reverse=True)  # key=os.path.getsize
+        ecmwf_forecasts.sort(
+            key=lambda x: int(os.path.basename(x).split('.')[0]),
+            reverse=True
+        )  # key=os.path.getsize
         forecast_date_timestep = get_date_timestep_from_forecast_dir(
                 ecmwf_folder)
 
@@ -149,10 +168,9 @@ def ecmwf_rapid_process(
                         watershed_job_index
                 ))
 
-            master_job_list += rapid_watershed_jobs[rapid_input_directory]['jobs']
+            master_job_list += rapid_watershed_jobs[rapid_input_directory] \
+                ['jobs']
 
-
-#    print(master_job_list)
     with open(os.path.join(file_output_location, 'rapid_run.txt'), 'w') as f:
         for line in master_job_list:
             formatted_line = ','.join(map(str, line))
@@ -165,7 +183,7 @@ def ecmwf_rapid_process(
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     ecmwf_rapid_process(
-        rapid_io_files_location=str(sys.argv[1]),
-        ecmwf_forecast_location=str(sys.argv[2]),
-        file_output_location=str(sys.argv[3])
+        rapid_io_files_location=sys.argv[1],
+        ecmwf_forecast_location=sys.argv[2],
+        file_output_location=sys.argv[3]
     )
