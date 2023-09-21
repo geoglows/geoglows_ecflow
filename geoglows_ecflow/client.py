@@ -3,8 +3,23 @@ import os
 import ecflow
 
 
+def ping(host_port: str = "localhost:2500") -> None:
+    """Ping server.
+
+    Args:
+        host_port (str, optional): Server host and port. Defaults to
+            "localhost:2500".
+    """
+    try:
+        ci = ecflow.Client(host_port)
+        ci.ping()
+
+    except RuntimeError as e:
+        print("ping failed: ", str(e))
+
+
 def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
-    """Add definition to the server and begin the suite.
+    """Add definition to the server.
 
     Args:
         definition (str): Path to job definition file. E.g.
@@ -16,12 +31,7 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
     definition_name = os.path.basename(definition).split('.')[0]
 
     # Check server connection
-    try:
-        ci = ecflow.Client(host_port)
-        ci.ping()
-
-    except RuntimeError as e:
-        print("ping failed: ", str(e))
+    ping(host_port)
 
     # Load the definition into the server
     try:
@@ -44,9 +54,28 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
         print("Restarting the server.")
         ci.restart_server()
 
+    except RuntimeError as e:
+        print("Failed: ", e)
+
+
+def begin(name: str, host_port: str = "localhost:2500") -> None:
+    """Begin definition.
+
+    Args:
+        name (str): Name of the definition. E.g. "geoglows_forecast".
+        host_port (str, optional): Server host and port. Defaults to
+            "localhost:2500".
+    """
+    # Check server connection
+    ping(host_port)
+
+    # Load the definition into the server
+    try:
+        ci = ecflow.Client(host_port)
+
         # Begin the suite
-        print(f"Begin '{definition_name}' suite.")
-        ci.begin_suite(definition_name)
+        print(f"Begin '{name}' suite.")
+        ci.begin_suite(name)
 
     except RuntimeError as e:
         print("Failed: ", e)
@@ -55,3 +84,5 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
 if __name__ == "__main__":
     if sys.argv[1] == "add_def":
         add_definition(*sys.argv[2:])
+    if sys.argv[1] == "begin_def":
+        begin(*sys.argv[2:])

@@ -94,3 +94,22 @@ export ECF_HOST=localhost
 
 ecflow_start.sh -d /path/to/ecflow_home
 ```
+
+## Local run example
+
+```Python
+import subprocess
+from geoglows_ecflow import geoglows_forecast_job, client
+
+# Start server
+subprocess.run(['bash', '/path/to/local_server_start.sh'])
+
+# Create definition
+geoglows_forecast_job.create("/path/to/config.yml")
+
+# Add definition to server
+client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
+
+# Begin definition
+client.begin("definition_name")
+```

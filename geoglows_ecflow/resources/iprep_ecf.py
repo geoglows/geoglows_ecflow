@@ -77,7 +77,6 @@ def ecmwf_rapid_process(
     rapid_io_files_location: str,
     ecmwf_forecast_location: str,
     file_output_location: str,
-    region: str | None = None
 ) -> list[tuple]:
     """Creates a list of jobs to run.
 
@@ -85,7 +84,6 @@ def ecmwf_rapid_process(
         rapid_io_files_location (str): Path to the rapid io files.
         ecmwf_forecast_location (str): Path to the ecmwf forecast files.
         file_output_location (str): Path to the output file.
-        region (str, optional): Region of the forecast. Defaults to None.
 
     Returns:
         list[tuple]: List of jobs to run.
@@ -103,8 +101,7 @@ def ecmwf_rapid_process(
 
     for ecmwf_folder in ecmwf_folders:
         # get list of forecast files
-        ecmwf_forecasts = glob(os.path.join(ecmwf_folder,
-                                            '*.runoff.%s*nc' % region))
+        ecmwf_forecasts = glob(os.path.join(ecmwf_folder, '*.runoff.*nc'))
 
         # make the largest files first
         ecmwf_forecasts.sort(
@@ -115,35 +112,35 @@ def ecmwf_rapid_process(
                 ecmwf_folder)
 
         # submit jobs to downsize ecmwf files to vpu
-        rapid_watershed_jobs = {}
+        rapid_vpu_jobs = {}
         for rapid_input_directory in rapid_input_directories:
 
             log.info(f'Adding rapid input folder {rapid_input_directory}')
             # keep list of jobs
-            rapid_watershed_jobs[rapid_input_directory] = {
+            rapid_vpu_jobs[rapid_input_directory] = {
                 'jobs': []
             }
 
-            master_watershed_input_directory = os.path.join(
+            master_vpu_input_directory = os.path.join(
                     rapid_io_files_location,
                     "input",
                     rapid_input_directory)
 
-            master_watershed_outflow_directory = os.path.join(
+            master_vpu_outflow_directory = os.path.join(
                     rapid_io_files_location,
                     'output',
                     rapid_input_directory,
                     forecast_date_timestep)
 
             try:
-                os.makedirs(master_watershed_outflow_directory)
+                os.makedirs(master_vpu_outflow_directory)
             except OSError:
                 pass
 
             initialize_flows = True
 
             # create jobs
-            for watershed_job_index, forecast in enumerate(ecmwf_forecasts):
+            for vpu_job_index, forecast in enumerate(ecmwf_forecasts):
                 ensemble_number = get_ensemble_number_from_forecast(forecast)
 
                 # get basin names
@@ -151,24 +148,23 @@ def ecmwf_rapid_process(
                                                        ensemble_number)
 
                 master_rapid_outflow_file = os.path.join(
-                        master_watershed_outflow_directory, outflow_file_name)
+                        master_vpu_outflow_directory, outflow_file_name)
 
                 job_name = 'job_%s_%s_%s' % (forecast_date_timestep,
                                              rapid_input_directory,
                                              ensemble_number)
 
-                rapid_watershed_jobs[rapid_input_directory]['jobs'].append((
+                rapid_vpu_jobs[rapid_input_directory]['jobs'].append((
                         forecast,
                         forecast_date_timestep,
                         rapid_input_directory,
                         initialize_flows,
                         job_name,
                         master_rapid_outflow_file,
-                        master_watershed_input_directory,
-                        watershed_job_index
+                        master_vpu_input_directory,
+                        vpu_job_index
                 ))
-
-            master_job_list += rapid_watershed_jobs[rapid_input_directory] \
+            master_job_list += rapid_vpu_jobs[rapid_input_directory] \
                 ['jobs']
 
     with open(os.path.join(file_output_location, 'rapid_run.txt'), 'w') as f:
