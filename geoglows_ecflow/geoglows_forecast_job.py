@@ -185,4 +185,4 @@ def create(config_path: str) -> None:
 
 
 if __name__ == "__main__":
-    create(sys.argv[1])
+    create(sys.argv[1])  # pragma: no cover

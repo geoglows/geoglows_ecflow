@@ -113,3 +113,16 @@ client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
 # Begin definition
 client.begin("definition_name")
 ```
+
+## Run tests
+
+```bash
+cd geoglows_ecflow/
+pip install -e .[test]
+
+# run tests
+pytests tests/
+
+# run tests with coverage
+pytests --cov geoglows_ecflow tests/
+```

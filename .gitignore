@@ -8,6 +8,11 @@ ecflow_home/
 *geoglows_forecast.def
 *.ecf.*
 
+# pytest and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

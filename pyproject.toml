@@ -10,11 +10,19 @@ dependencies = [
     "pandas>=2.1.0",
     "fastparquet>=2023.8.0",
 ]
-optional-dependencies = {test = ["pytest>=7.4.2", "pytest-mock>=3.11.1"]}
-
 requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.2",
+    "pytest-mock>=3.11.1",
+    "pytest-cov>=4.1.0",
+]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.setuptools]
 packages = ["geoglows_ecflow"]
