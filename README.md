@@ -34,7 +34,7 @@ local_run: false
 ecflow_entities:
   suite:
     name: geoglows_forecast
-    logs: /path/to/ecf_out
+    logs: /path/to/suite_log
   family:
     name: ensemble_family
     suite: geoglows_forecast

@@ -22,7 +22,8 @@ def load_config(config_path: str) -> dict:
 def prepare_dir_structure(
     python_exec: str,
     workspace: str,
-    entities: dict
+    entities: dict,
+    suite_logs: str
 ) -> None:
     """Create the directory structure for the ecflow job.
 
@@ -31,7 +32,15 @@ def prepare_dir_structure(
         workspace (str): Path to the job workspace.
         entities (dict): Dictionary containing the entities of the ecflow job.
             See config.yml.
+        suite_logs (str): Path to the suite logs.
     """
+    # Create log dir if not exist
+    try:
+        if not os.path.exists(suite_logs):
+            os.makedirs(suite_logs)
+    except OSError as e:
+        raise OSError(f"Error creating log directory: {e}")
+
     # Create files and directories
     for type, ent in entities.items():
         if type == 'suite':
