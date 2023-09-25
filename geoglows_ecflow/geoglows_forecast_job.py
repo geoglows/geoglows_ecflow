@@ -184,5 +184,5 @@ def create(config_path: str) -> None:
     return defs
 
 
-if __name__ == "__main__":
-    create(sys.argv[1])  # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
+    create(sys.argv[1])

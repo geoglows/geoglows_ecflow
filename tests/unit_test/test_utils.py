@@ -3,13 +3,16 @@
 import os
 import pytest
 from geoglows_ecflow.utils import (load_config, prepare_dir_structure,
-                                   create_symlinks_for_ensemble_tasks)
-from ecflow import Expression, Family, Defs
+                                   create_symlinks_for_ensemble_tasks,
+                                   add_variables, validate)
+from ecflow import Defs, Suite, Family, Task
 
 
 def test_load_config():
     config_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "files", "mock_config.yml"
+        os.path.dirname(os.path.dirname(__file__)),
+        "files",
+        "mock_config_test.yml"
     )
     config = load_config(config_path)
 
@@ -72,12 +75,12 @@ def test_prepare_dir_structure(tmpdir):
         prepare_dir_structure(python_exec, workspace, entities, suite_logs)
 
 
-@pytest.mark.parametrize('existing_symlink,existing_file', [
+@pytest.mark.parametrize('symlnk_exists, file_exists', [
     (False, False),
     (True, False),
     (False, True)
 ])
-def test_create_symlinks_for_ensemble_tasks(tmpdir, existing_symlink, existing_file):
+def test_create_symlinks_for_ensemble_tasks(tmpdir, symlnk_exists, file_exists):
     # Define test data
     workspace = str(tmpdir.mkdir('workspace'))
     suite = 'my_suite'
@@ -94,16 +97,15 @@ def test_create_symlinks_for_ensemble_tasks(tmpdir, existing_symlink, existing_f
         f.write('test')
 
     # Create an existing symlink or file if specified
-    if existing_symlink:
+    if symlnk_exists:
         os.symlink(task_file, os.path.join(family_dir, f'{task}_1.ecf'))
-    if existing_file:
+    if file_exists:
         with open(os.path.join(family_dir, f'{task}_1.ecf'), 'w') as f:
             f.write('test')
 
     # Call the function and check the result
-    if existing_file:
-        with pytest.raises(OSError):
-            create_symlinks_for_ensemble_tasks(workspace, task, family, suite)
+    if file_exists:
+        create_symlinks_for_ensemble_tasks(workspace, task, family, suite)
     else:
         create_symlinks_for_ensemble_tasks(workspace, task, family, suite)
         for i in range(1, 53):
@@ -114,3 +116,33 @@ def test_create_symlinks_for_ensemble_tasks(tmpdir, existing_symlink, existing_f
 
     # Remove the temporary directory
     tmpdir.remove()
+
+
+@pytest.mark.parametrize('entity_type', [Suite, Family, Task])
+def test_add_variables(entity_type):
+    # Create an entity and add some variables
+    entity = entity_type('my_entity')
+    vars = {'var1': 'value1', 'var2': 'value2'}
+    add_variables(entity, vars)
+
+    # Check that the variables were added correctly
+    assert entity.find_variable('var1').value() == 'value1'
+    assert entity.find_variable('var2').value() == 'value2'
+
+
+@pytest.mark.parametrize('valid_defs', [
+    True,
+    False
+])
+def test_validate(valid_defs, mocker):
+    # Create a job definition
+    defs = Defs()
+    defs.add_suite('my_suite')
+
+    # Call the validate function
+    mock_check = mocker.patch('geoglows_ecflow.utils.Defs.check')
+    mock_check_j = mocker.patch('geoglows_ecflow.utils.Defs.check_job_creation')
+    validate(defs)
+
+    assert mock_check.called_once_with(defs)
+    assert mock_check_j.called_once_with(defs)

@@ -42,7 +42,9 @@ def test_create_ensemble_family(is_local, trigger_expression):
 
 def test_create(capsys, mocker):
     config_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "files", "mock_config.yml"
+        os.path.dirname(os.path.dirname(__file__)),
+        "files",
+        "mock_config_test.yml"
     )
     expected_output = Defs(os.path.join(os.path.dirname(
         os.path.dirname(__file__)), "files", "mock_defs_novar.def"
