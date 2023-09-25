@@ -8,6 +8,7 @@ from geoglows_ecflow.utils import (load_config, prepare_dir_structure,
 
 def create_ensemble_family(
     family: str,
+    task: str,
     rapid_exec: str,
     rapid_exec_dir: str,
     rapid_subprocess_dir: str,
@@ -17,6 +18,7 @@ def create_ensemble_family(
 
     Args:
         family (str): Name of the family group.
+        task (str): Name of the task for each ensemble.
         rapid_exec (str): Path to the rapid executable.
         rapid_exec_dir (str): Path to the rapid executable directory.
         rapid_subprocess_dir (str): Path to the rapid subprocess directory.
@@ -37,14 +39,14 @@ def create_ensemble_family(
     ensemble_family.add_variable("SUBPROCESS_DIR", rapid_subprocess_dir)
 
     # Create the high resolution ensemble task
-    ensemble_family += [Task(f"ens_member_52").add_variable("JOB_INDEX", 0)]
+    ensemble_family += [Task(f"{task}_52").add_variable("JOB_INDEX", 0)]
 
     # Create the ensemble tasks
     for i in reversed(range(1, 52)):
-        ens_task = Task(f"ens_member_{i}")
+        ens_task = Task(f"{task}_{i}")
         ens_task.add_variable("JOB_INDEX", 52 - i)
         if is_local:
-            ens_task.add_trigger(f"ens_member_{i + 1} == complete")
+            ens_task.add_trigger(f"{task}_{i + 1} == complete")
         ensemble_family += [ens_task]
 
     return ensemble_family
@@ -55,6 +57,9 @@ def create(config_path: str) -> None:
 
     Args:
         config_path (str): Path to the configuration file.
+
+    Returns:
+        Defs: ecflow job definition.
     """
     # Load the configuration file
     config = load_config(config_path)
@@ -79,21 +84,15 @@ def create(config_path: str) -> None:
     era_dir = config['era_dir']
     nces_exec = config['nces_exec']
 
-    # Create log dir if not exist
-    try:
-        if not os.path.exists(ecflow_suite_logs):
-            os.makedirs(ecflow_suite_logs)
-    except OSError as e:
-        print(f"Error creating log directory: {e}")
-
     # Prepare the directory structure
     prepare_dir_structure(
         python_exec,
         ecflow_home,
-        ecflow_entities
+        ecflow_entities,
+        ecflow_suite_logs
     )
 
-    # Create symbolic links to 'ens_member.ecf' file for each ensemble member
+    # Create symbolic links to '.ecf' file for each ensemble member task
     create_symlinks_for_ensemble_tasks(
         ecflow_home,
         ensemble_member_task,
@@ -133,6 +132,7 @@ def create(config_path: str) -> None:
     # Add the ensemble family to the suite
     suite += create_ensemble_family(
         ensemble_family,
+        ensemble_member_task,
         rapid_exec,
         rapid_exec_dir,
         rapid_subprocess_dir,
@@ -181,6 +181,8 @@ def create(config_path: str) -> None:
     print(f"Saving definition to file '{output_path}'")
     defs.save_as_defs(output_path)
 
+    return defs
 
-if __name__ == "__main__":
+
+if __name__ == "__main__":  # pragma: no cover
     create(sys.argv[1])

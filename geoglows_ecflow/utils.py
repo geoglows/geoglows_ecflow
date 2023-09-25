@@ -12,17 +12,24 @@ def load_config(config_path: str) -> dict:
 
     Returns:
         dict: dictionary containing the configuration parameters.
-    """
-    with open(config_path, 'r') as f:
-        config = safe_load(f)
 
-    return config
+    Raises:
+        FileNotFoundError: If the configuration file does not exist.
+    """
+    try:
+        with open(config_path, 'r') as f:
+            config = safe_load(f)
+
+        return config
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"Error loading configuration file: {e}")
 
 
 def prepare_dir_structure(
     python_exec: str,
     workspace: str,
-    entities: dict
+    entities: dict,
+    suite_logs: str
 ) -> None:
     """Create the directory structure for the ecflow job.
 
@@ -31,44 +38,49 @@ def prepare_dir_structure(
         workspace (str): Path to the job workspace.
         entities (dict): Dictionary containing the entities of the ecflow job.
             See config.yml.
+        suite_logs (str): Path to the suite logs directory.
+    Raises:
+        OSError: If the directory structure cannot be created.
     """
     # Create files and directories
-    for type, ent in entities.items():
-        if type == 'suite':
-            suite_path = os.path.join(workspace, ent['name'])
-            suite_logs_path = os.path.join(workspace, ent['name'], ent['logs'])
-            if not os.path.exists(suite_path):
-                os.makedirs(suite_path)
-            if not os.path.exists(suite_logs_path):
-                os.makedirs(suite_logs_path)
+    try:
+        for type, ent in entities.items():
+            if type == 'suite':
+                suite_path = os.path.join(workspace, ent['name'])
+                if not os.path.exists(suite_path):
+                    os.makedirs(suite_path)
+                if not os.path.exists(suite_logs):
+                    os.makedirs(suite_logs)
 
-        elif type == 'family':
-            family_path = os.path.join(workspace, ent['suite'], ent['name'])
-            if not os.path.exists(family_path):
-                os.makedirs(family_path)
+            elif type == 'family':
+                family_path = os.path.join(workspace, ent['suite'], ent['name'])
+                if not os.path.exists(family_path):
+                    os.makedirs(family_path)
 
-        elif type == 'task':
-            for task in ent:
-                task_path = os.path.join(
-                    workspace, task['suite'], f"{task['name']}.ecf"
-                )
-                var_list = " ".join([f'%{var}%' for var in task['variables']])
+            elif type == 'task':
+                for task in ent:
+                    task_path = os.path.join(
+                        workspace, task['suite'], f"{task['name']}.ecf"
+                    )
+                    var_list = " ".join([f'%{var}%' for var in task['variables']])
 
-                if not os.path.exists(task_path):
-                    with open(task_path, 'w') as f:
-                        f.write('%include <head.h>\n')
-                        f.write(f"{python_exec} {var_list}\n")
-                        f.write('%include <tail.h>\n')
+                    if not os.path.exists(task_path):
+                        with open(task_path, 'w') as f:
+                            f.write('%include <head.h>\n')
+                            f.write(f"{python_exec} {var_list}\n")
+                            f.write('%include <tail.h>\n')
 
-    # Copy head.h and tail.h files
-    shutil.copyfile(
-        os.path.join(os.path.dirname(__file__), 'resources', 'head.h'),
-        os.path.join(workspace, 'head.h')
-    )
-    shutil.copyfile(
-        os.path.join(os.path.dirname(__file__), 'resources', 'tail.h'),
-        os.path.join(workspace, 'tail.h')
-    )
+        # Copy head.h and tail.h files
+        shutil.copyfile(
+            os.path.join(os.path.dirname(__file__), 'resources', 'head.h'),
+            os.path.join(workspace, 'head.h')
+        )
+        shutil.copyfile(
+            os.path.join(os.path.dirname(__file__), 'resources', 'tail.h'),
+            os.path.join(workspace, 'tail.h')
+        )
+    except OSError as e:
+        raise OSError(f"Error creating files/directory: {e}")
 
 
 def create_symlinks_for_ensemble_tasks(

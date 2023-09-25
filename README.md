@@ -34,7 +34,7 @@ local_run: false
 ecflow_entities:
   suite:
     name: geoglows_forecast
-    logs: /path/to/ecf_out
+    logs: /path/to/suite_log
   family:
     name: ensemble_family
     suite: geoglows_forecast
@@ -112,4 +112,17 @@ client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
 
 # Begin definition
 client.begin("definition_name")
+```
+
+## Run tests
+
+```bash
+cd geoglows_ecflow/
+pip install -e .[test]
+
+# run tests
+pytests tests/
+
+# run tests with coverage
+pytests --cov geoglows_ecflow tests/
 ```

@@ -1,6 +1,6 @@
 import sys
 import os
-import ecflow
+from ecflow import Client
 
 
 def ping(host_port: str = "localhost:2500") -> None:
@@ -11,11 +11,11 @@ def ping(host_port: str = "localhost:2500") -> None:
             "localhost:2500".
     """
     try:
-        ci = ecflow.Client(host_port)
+        ci = Client(host_port)
         ci.ping()
 
     except RuntimeError as e:
-        print("ping failed: ", str(e))
+        print("ping failed:", str(e))
 
 
 def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
@@ -36,7 +36,7 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
     # Load the definition into the server
     try:
         print(f"Loading '{definition_name}' definition into the server.")
-        ci = ecflow.Client(host_port)
+        ci = Client(host_port)
 
         ci.sync_local()   # sync definitions from server
         defs = ci.get_defs() # retrieve the defs from ci
@@ -55,7 +55,7 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
         ci.restart_server()
 
     except RuntimeError as e:
-        print("Failed: ", e)
+        print("Failed:", e)
 
 
 def begin(name: str, host_port: str = "localhost:2500") -> None:
@@ -71,17 +71,17 @@ def begin(name: str, host_port: str = "localhost:2500") -> None:
 
     # Load the definition into the server
     try:
-        ci = ecflow.Client(host_port)
+        ci = Client(host_port)
 
         # Begin the suite
         print(f"Begin '{name}' suite.")
         ci.begin_suite(name)
 
     except RuntimeError as e:
-        print("Failed: ", e)
+        print("Failed:", e)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     if sys.argv[1] == "add_def":
         add_definition(*sys.argv[2:])
     if sys.argv[1] == "begin_def":
