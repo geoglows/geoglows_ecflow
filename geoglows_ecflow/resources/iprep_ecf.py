@@ -1,76 +1,15 @@
 import sys
 import os
-import re
 from glob import glob
-from datetime import datetime as dt
 import logging as log
-
-log.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=log.INFO
+from geoglows_ecflow.resources.helper_functions import (
+    get_date_timestep_from_forecast_dir, get_valid_vpucode_list,
+    get_ensemble_number_from_forecast
 )
 
-
-def get_date_timestep_from_forecast_dir(forecast_dir: str) -> str:
-    """Gets the datetime from a forecast directory.
-
-    Args:
-        forecast_dir (str): Path representing forecast directory.
-
-    Returns:
-        A string representing the datetime in the format "%Y%m%d.%H".
-
-    Raises:
-        AttributeError: If forecast_dir is not found or in the expected format.
-    """
-    # Get the forecast datetime from the forecast directory
-    forecast_date_timestep = os.path.basename(forecast_dir)
-    log.info(f'Forecast timestep {forecast_date_timestep}')
-
-    # Parse forecast datetime
-    date_time_regex = '\d{8}\.\d{2}'
-    try:
-        match = re.search(date_time_regex, forecast_date_timestep)
-        date_time_str = match.group()
-        return date_time_str
-    except AttributeError:
-        raise AttributeError("No datetime match found.")
-
-
-def get_valid_vpucode_list(input_directory: str) -> list[str]:
-    """
-    Get a list of vpucodes from the input directory.
-
-    Args:
-        input_directory (str): Path to the rapid input directory.
-
-    Returns:
-        list[str]: List of valid directories (vpucodes).
-    """
-    valid_input_directories = []
-    # Append to valid_input_directories if directory, skip if not
-    for directory in os.listdir(input_directory):
-        if os.path.isdir(os.path.join(input_directory, directory)):
-            valid_input_directories.append(directory)
-        else:
-            print(f"{directory} not a directory. Skipping...")
-    return valid_input_directories
-
-
-def get_ensemble_number_from_forecast(forecast_name: str) -> int:
-    """Gets the datetimestep from forecast.
-
-    Args:
-        forecast_name (str): Name of the forecast file. E.g. "1.runoff.nc".
-
-    Returns:
-        int: The ensemble number.
-    """
-    forecast_split = os.path.basename(forecast_name).split(".")
-    if forecast_name.endswith(".205.runoff.grib.runoff.netcdf"):
-        ensemble_number = int(forecast_split[2])
-    else:
-        ensemble_number = int(forecast_split[0])
-    return ensemble_number
+logger = log.basicConfig(
+    format="%(asctime)s - %(levelname)s - %(message)s", level=log.INFO
+)
 
 
 def ecmwf_rapid_process(
@@ -115,7 +54,7 @@ def ecmwf_rapid_process(
         rapid_vpu_jobs = {}
         for rapid_input_directory in rapid_input_directories:
 
-            log.info(f'Adding rapid input folder {rapid_input_directory}')
+            logger.info(f'Adding rapid input folder {rapid_input_directory}')
             # keep list of jobs
             rapid_vpu_jobs[rapid_input_directory] = {
                 'jobs': []
