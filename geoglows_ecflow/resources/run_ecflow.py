@@ -17,7 +17,7 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
     lines = f.readlines()
     for line in lines:
         params = line.split(',')
-        if int(params[8].replace('\n', '')) == int(sys.argv[2]):
+        if int(params[7].replace('\n', '')) == int(sys.argv[2]):
             ecmwf_forecast = params[0]
             forecast_date_timestep = params[1]
             vpucode = params[2]
@@ -28,7 +28,7 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
             rapid_input_directory = params[6]
             mp_execute_directory = str(sys.argv[4])
             subprocess_forecast_log_dir = str(sys.argv[5])
-            watershed_job_index = int(params[8].replace('\n', ''))
+            watershed_job_index = int(params[7].replace('\n', ''))
 
             rapid_logger = create_logger(
                 'rapid_run_logger',
@@ -45,11 +45,11 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
                 raise OSError(f"Failed to create {execute_directory}: {e}")
 
             try:
-                if not os.path.exists(master_rapid_outflow_file):
-                    os.makedirs(master_rapid_outflow_file)
+                if not os.path.exists(os.path.dirname(master_rapid_outflow_file)):
+                    os.makedirs(os.path.dirname(master_rapid_outflow_file))
             except OSError as e:
                 raise OSError(
-                    f"Failed to create {master_rapid_outflow_file}: {e}"
+                    f"Failed to create {os.path.dirname(master_rapid_outflow_file)}: {e}"
                 )
 
             time_start_all = datetime.datetime.utcnow()
@@ -80,7 +80,7 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
                 )
                 weight_table = case_insensitive_file_search(
                     rapid_input_directory,
-                    r'weight_ifs_48r1*?\.csv'
+                    r'weight_ifs_48r1.*?\.csv'
                 )
                 k_file = case_insensitive_file_search(
                     rapid_input_directory,
@@ -90,20 +90,7 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
                     rapid_input_directory,
                     r'x\.csv'
                 )
-                Qfor_file = case_insensitive_file_search(
-                    rapid_input_directory,
-                    r'qfor\.csv'
-                )
-                for_tot_id_file = case_insensitive_file_search(
-                    rapid_input_directory,
-                    r'for_tot_id\.csv'
-                )
-                for_use_id_file = case_insensitive_file_search(
-                    rapid_input_directory,
-                    r'for_use_id\.csv'
-                )
             except Exception as e:
-                comid_lat_lon_z_file = ""
                 rapid_logger.critical(f"input file not found: {e}")
                 raise
 
@@ -118,6 +105,19 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
 
             # check for forcing flows
             try:
+                Qfor_file = case_insensitive_file_search(
+                    rapid_input_directory,
+                    r'qfor\.csv'
+                )
+                for_tot_id_file = case_insensitive_file_search(
+                    rapid_input_directory,
+                    r'for_tot_id\.csv'
+                )
+                for_use_id_file = case_insensitive_file_search(
+                    rapid_input_directory,
+                    r'for_use_id\.csv'
+                )
+
                 rapid_manager.update_parameters(
                     Qfor_file=Qfor_file,
                     for_tot_id_file=for_tot_id_file,
@@ -126,8 +126,8 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
                     BS_opt_for=True
                 )
             except Exception:
-                rapid_logger.warning(
-                    'WARNING: Forcing files not found. Skipping forcing ...'
+                rapid_logger.info(
+                    'Forcing files not found. Skipping forcing ...'
                 )
                 pass
 
@@ -172,12 +172,14 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
                         BS_opt_Qinit = qinit_file and os.path.exists(qinit_file)
                     except:
                         print(
-                            "Error: "
+                            "WARNING: "
                             f"{qinit_file} not found. Not initializing ..."
                         )
                         qinit_file = ""
 
-            with "/home/michael/geoglows_ecflow/data/rapid_io" as temp_dir:  # TemporaryDirectory() as temp_dir:
+            # with TemporaryDirectory() as temp_dir:
+            if True:
+                temp_dir = "/home/michael/geoglows_ecflow/data/rapid_io"
                 inflow_dir = os.path.join(temp_dir, 'inflows')
 
                 create_inflow_file(
@@ -191,7 +193,7 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
 
                 inflow_file_path = case_insensitive_file_search(
                     inflow_dir,
-                    rf'm3_{vpucode}*?\.nc'
+                    rf'm3_{vpucode}.*?\.nc'
                 )
 
                 try:
@@ -227,18 +229,18 @@ with open(os.path.join(str(sys.argv[1]), 'rapid_run.txt'), 'r') as f:
             rmtree(execute_directory)
 
     # get list of correclty formatted rapid input directories in rapid directory
-    rapid_io_files_location = lines[0].split(',')[7].split('/input')[0]
+    rapid_io_files_location = rapid_input_directory.split('/input')[0]
     rapid_input_directories = get_valid_vpucode_list(os.path.join(rapid_io_files_location, "input"))
 
-    for rapid_input_directory in rapid_input_directories:
+    for rapid_input_dir in rapid_input_directories:
         # initialize flows for next run
         input_directory = os.path.join(rapid_io_files_location,
                                        'input',
-                                       rapid_input_directory)
+                                       rapid_input_dir)
 
         forecast_directory = os.path.join(rapid_io_files_location,
                                           'output',
-                                          rapid_input_directory,
+                                          rapid_input_dir,
                                           forecast_date_timestep)
 
         if os.path.exists(forecast_directory):

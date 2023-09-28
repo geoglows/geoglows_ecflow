@@ -3,13 +3,11 @@ import os
 from glob import glob
 import logging as log
 from geoglows_ecflow.resources.helper_functions import (
-    get_date_timestep_from_forecast_dir, get_valid_vpucode_list,
+    create_logger, get_date_timestep_from_forecast_dir, get_valid_vpucode_list,
     get_ensemble_number_from_forecast
 )
 
-logger = log.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=log.INFO
-)
+logger = create_logger('prep_task_log')
 
 
 def ecmwf_rapid_process(
@@ -48,7 +46,9 @@ def ecmwf_rapid_process(
             reverse=True
         )  # key=os.path.getsize
         forecast_date_timestep = get_date_timestep_from_forecast_dir(
-                ecmwf_folder)
+            ecmwf_folder,
+            logger
+        )
 
         # submit jobs to downsize ecmwf files to vpu
         rapid_vpu_jobs = {}
@@ -113,9 +113,6 @@ def ecmwf_rapid_process(
     return master_job_list
 
 
-# ------------------------------------------------------------------------------
-# main process
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     ecmwf_rapid_process(
         rapid_io_files_location=sys.argv[1],

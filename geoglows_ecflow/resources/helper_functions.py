@@ -3,6 +3,7 @@
 # Updated by Michael Souffront, 2023
 
 import os
+import sys
 import re
 import datetime
 import numpy as np
@@ -19,11 +20,14 @@ def create_logger(
 ) -> log.Logger:
     # Create a logger
     logger = log.getLogger(name)
+    logger.setLevel(level)
 
     if log_file:
-        logger.setLevel(level)
         # Create file handler
         handler = log.FileHandler(log_file)
+    else:
+        handler = log.StreamHandler(sys.stdout)
+
         handler.setLevel(level)
         handler.setFormatter(
             log.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -31,11 +35,6 @@ def create_logger(
 
         # Add the handler to the logger
         logger.addHandler(handler)
-    else:
-        logger.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(message)s",
-            level=level
-        )
 
     return logger
 
