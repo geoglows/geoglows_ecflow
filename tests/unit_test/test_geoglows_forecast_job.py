@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from geoglows_ecflow.geoglows_forecast_job import create_ensemble_family, create
+from geoglows_ecflow.geoglows_forecast_job import create_rapid_run_family, create
 from ecflow import Expression, Family, Defs
 
 
@@ -17,7 +17,7 @@ def test_create_ensemble_family(is_local, trigger_expression):
     rapid_exec_dir = "/path/to/rapid/executable/directory"
     rapid_subprocess_dir = "/path/to/rapid/subprocess/directory"
 
-    family = create_ensemble_family(
+    family = create_rapid_run_family(
         family_name,
         ensemble_member_task,
         rapid_exec,
