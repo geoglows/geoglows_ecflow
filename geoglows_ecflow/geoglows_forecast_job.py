@@ -4,21 +4,24 @@ from ecflow import Defs, Family, Task
 from geoglows_ecflow.utils import (load_config, prepare_dir_structure,
                                    create_symlinks_for_ensemble_tasks,
                                    add_variables, validate)
+from geoglows_ecflow.resources.constants import VPU_LIST
 
 
-def create_ensemble_family(
-    family: str,
-    task: str,
+def create_rapid_run_family(
+    family_name: str,
+    task_name: str,
+    trigger_task: str,
     rapid_exec: str,
     rapid_exec_dir: str,
     rapid_subprocess_dir: str,
     is_local: bool = False
 ) -> Family:
-    """_summary_
+    """Create the ecflow family for the main rapid run.
 
     Args:
-        family (str): Name of the family group.
-        task (str): Name of the task for each ensemble.
+        family_name (str): Name of the family group.
+        task_name (str): Name of the task.
+        trigger_task (str): Task that the family depends on.
         rapid_exec (str): Path to the rapid executable.
         rapid_exec_dir (str): Path to the rapid executable directory.
         rapid_subprocess_dir (str): Path to the rapid subprocess directory.
@@ -28,28 +31,70 @@ def create_ensemble_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'run_ecflow.py'
+        os.path.dirname(__file__), 'resources', 'run_rapid_forecast.py'
     )
 
-    ensemble_family = Family(family)
-    ensemble_family.add_trigger("prep_task == complete")
-    ensemble_family.add_variable("PYSCRIPT", pyscript_path)
-    ensemble_family.add_variable("RAPID_EXEC", rapid_exec)
-    ensemble_family.add_variable("EXEC_DIR", rapid_exec_dir)
-    ensemble_family.add_variable("SUBPROCESS_DIR", rapid_subprocess_dir)
+    family = Family(family_name)
+    family.add_trigger(f"{trigger_task} == complete")
+    family.add_variable("PYSCRIPT", pyscript_path)
+    family.add_variable("RAPID_EXEC", rapid_exec)
+    family.add_variable("EXEC_DIR", rapid_exec_dir)
+    family.add_variable("SUBPROCESS_DIR", rapid_subprocess_dir)
 
-    # Create the high resolution ensemble task
-    ensemble_family += [Task(f"{task}_52").add_variable("JOB_INDEX", 0)]
+    for i, vpu in enumerate(VPU_LIST):
+        # Create the ensemble tasks
+        for j in reversed(range(1, 53)):
+            task = Task(f"{task_name}_{vpu}_{j}")
+            task.add_variable("JOB_ID", f'job_{vpu}_{j}')
+            if is_local:
+                if i > 0 or j != 52:
+                    prev_vpu = VPU_LIST[i - 1] if j + 1 > 52 else vpu
+                    task.add_trigger(
+                        f"{task_name}_{prev_vpu}_{j % 52 + 1} == complete"
+                    )
 
-    # Create the ensemble tasks
-    for i in reversed(range(1, 52)):
-        ens_task = Task(f"{task}_{i}")
-        ens_task.add_variable("JOB_INDEX", 52 - i)
+            family.add_task(task)
+
+    return family
+
+
+def create_init_flows_family(
+    family_name: str,
+    task_name: str,
+    trigger: str,
+    is_local: bool = False
+) -> Family:
+    """Create the ecflow family for initializing flows.
+
+    Args:
+        family_name (str): Name of the family group.
+        task_name (str): Name of the task.
+        trigger (str): Trigger that will start this family.
+        is_local (bool, optional): True if the job is run locally.
+
+    Returns:
+        Family: ecflow family object.
+    """
+    pyscript_path = os.path.join(
+        os.path.dirname(__file__), 'resources', 'compute_init_flows.py'
+    )
+
+    family = Family(family_name)
+    family.add_trigger(f"{trigger} == complete")
+    family.add_variable("PYSCRIPT", pyscript_path)
+
+    for i, vpu in enumerate(VPU_LIST):
+        # Create init flows tasks
+        task = Task(f"{task_name}_{vpu}")
+        task.add_variable("VPU", vpu)
         if is_local:
-            ens_task.add_trigger(f"{task}_{i + 1} == complete")
-        ensemble_family += [ens_task]
+            if i > 0:
+                prev_vpu = VPU_LIST[i - 1]
+                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
 
-    return ensemble_family
+        family.add_task(task)
+
+    return family
 
 
 def create(config_path: str) -> None:
@@ -66,15 +111,17 @@ def create(config_path: str) -> None:
     python_exec = config['python_exec']
     ecflow_home = config['ecflow_home']
     ecflow_bin = config.get('ecflow_bin')
-    local_run = config['local_run']
+    local_run = config.get('local_run')
     ecflow_entities = config['ecflow_entities']
     ecflow_suite = config['ecflow_entities']['suite']['name']
     ecflow_suite_logs = config['ecflow_entities']['suite']['logs']
-    ensemble_family = config['ecflow_entities']['family']['name']
-    prep_task = config['ecflow_entities']['task'][0]['name']
+    rapid_family_name = config['ecflow_entities']['family'][0]['name']
+    init_flows_family_name = config['ecflow_entities']['family'][1]['name']
+    prep_task_name = config['ecflow_entities']['task'][0]['name']
     plain_table_task = config['ecflow_entities']['task'][1]['name']
     day_one_forecast_task = config['ecflow_entities']['task'][2]['name']
-    ensemble_member_task = config['ecflow_entities']['task'][3]['name']
+    rapid_task_name = config['ecflow_entities']['task'][3]['name']
+    init_flows_task_name = config['ecflow_entities']['task'][4]['name']
     rapid_exec = config['rapid_exec']
     rapid_exec_dir = config['rapid_exec_dir']
     rapid_subprocess_dir = config['rapid_subprocess_dir']
@@ -92,11 +139,19 @@ def create(config_path: str) -> None:
         ecflow_suite_logs
     )
 
-    # Create symbolic links to '.ecf' file for each ensemble member task
+    # Create symbolic links to '.ecf' file for each rapid run task
     create_symlinks_for_ensemble_tasks(
         ecflow_home,
-        ensemble_member_task,
-        ensemble_family,
+        rapid_task_name,
+        rapid_family_name,
+        ecflow_suite
+    )
+
+    # Create symbolic links to '.ecf' file for each init flows task
+    create_symlinks_for_ensemble_tasks(
+        ecflow_home,
+        init_flows_task_name,
+        init_flows_family_name,
         ecflow_suite
     )
 
@@ -116,11 +171,11 @@ def create(config_path: str) -> None:
     add_variables(suite, suite_variables)
 
     # Define 'prep_task'
-    prep_task = suite.add_task(prep_task)
+    prep_task = suite.add_task(prep_task_name)
 
     # Set variables for 'prep_task'
     prep_task_ps = os.path.join(
-        os.path.dirname(__file__), 'resources', 'iprep_ecf.py'
+        os.path.dirname(__file__), 'resources', 'prep_rapid_forecast.py'
     )
     prep_task_vars = {
         "PYSCRIPT": prep_task_ps,
@@ -129,19 +184,30 @@ def create(config_path: str) -> None:
     }
     add_variables(prep_task, prep_task_vars)
 
-    # Add the ensemble family to the suite
-    suite += create_ensemble_family(
-        ensemble_family,
-        ensemble_member_task,
+    # Add the rapid run family to the suite
+    rapid_run_family = create_rapid_run_family(
+        rapid_family_name,
+        rapid_task_name,
+        prep_task_name,
         rapid_exec,
         rapid_exec_dir,
         rapid_subprocess_dir,
         is_local=local_run
     )
+    suite.add_family(rapid_run_family)
+
+    # Add the init flows family to the suite
+    init_flows_family = create_init_flows_family(
+        init_flows_family_name,
+        init_flows_task_name,
+        rapid_family_name,
+        is_local=local_run
+    )
+    suite.add_family(init_flows_family)
 
     # Define 'plain_table_task'
     plain_table_task = suite.add_task(plain_table_task)
-    plain_table_task.add_trigger(f"{ensemble_family} == complete")
+    plain_table_task.add_trigger(f"{init_flows_family_name} == complete")
 
     # Set variables for 'plain_table_task'
     plain_table_ps = os.path.join(
@@ -158,7 +224,7 @@ def create(config_path: str) -> None:
 
     # Define 'day_one_forecast_task'
     store_day_one = suite.add_task(day_one_forecast_task)
-    store_day_one.add_trigger(f"{ensemble_family} == complete")
+    store_day_one.add_trigger(f"{rapid_family_name} == complete")
 
     # Set variables for 'day_one_forecast_task'
     store_day_one_ps = os.path.join(
