@@ -16,7 +16,7 @@ def create_rapid_run_family(
     rapid_subprocess_dir: str,
     is_local: bool = False
 ) -> Family:
-    """_summary_
+    """Create the ecflow family for the main rapid run.
 
     Args:
         family_name (str): Name of the family group.
@@ -58,6 +58,45 @@ def create_rapid_run_family(
     return family
 
 
+def create_init_flows_family(
+    family_name: str,
+    task_name: str,
+    trigger: str,
+    is_local: bool = False
+) -> Family:
+    """Create the ecflow family for initializing flows.
+
+    Args:
+        family_name (str): Name of the family group.
+        task_name (str): Name of the task.
+        trigger (str): Trigger that will start this family.
+        is_local (bool, optional): True if the job is run locally.
+
+    Returns:
+        Family: ecflow family object.
+    """
+    pyscript_path = os.path.join(
+        os.path.dirname(__file__), 'resources', 'compute_init_flows.py'
+    )
+
+    family = Family(family_name)
+    family.add_trigger(f"{trigger} == complete")
+    family.add_variable("PYSCRIPT", pyscript_path)
+
+    for i, vpu in enumerate(VPU_LIST):
+        # Create init flows tasks
+        task = Task(f"{task_name}_{vpu}")
+        task.add_variable("VPU", vpu)
+        if is_local:
+            if i > 0:
+                prev_vpu = VPU_LIST[i - 1]
+                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+
+        family.add_task(task)
+
+    return family
+
+
 def create(config_path: str) -> None:
     """Create the ecflow job definition file and its file structure.
 
@@ -72,15 +111,17 @@ def create(config_path: str) -> None:
     python_exec = config['python_exec']
     ecflow_home = config['ecflow_home']
     ecflow_bin = config.get('ecflow_bin')
-    local_run = config['local_run']
+    local_run = config.get('local_run')
     ecflow_entities = config['ecflow_entities']
     ecflow_suite = config['ecflow_entities']['suite']['name']
     ecflow_suite_logs = config['ecflow_entities']['suite']['logs']
-    rapid_family_name = config['ecflow_entities']['family']['name']
+    rapid_family_name = config['ecflow_entities']['family'][0]['name']
+    init_flows_family_name = config['ecflow_entities']['family'][1]['name']
     prep_task_name = config['ecflow_entities']['task'][0]['name']
     plain_table_task = config['ecflow_entities']['task'][1]['name']
     day_one_forecast_task = config['ecflow_entities']['task'][2]['name']
     rapid_task_name = config['ecflow_entities']['task'][3]['name']
+    init_flows_task_name = config['ecflow_entities']['task'][4]['name']
     rapid_exec = config['rapid_exec']
     rapid_exec_dir = config['rapid_exec_dir']
     rapid_subprocess_dir = config['rapid_subprocess_dir']
@@ -98,11 +139,19 @@ def create(config_path: str) -> None:
         ecflow_suite_logs
     )
 
-    # Create symbolic links to '.ecf' file for each ensemble member task
+    # Create symbolic links to '.ecf' file for each rapid run task
     create_symlinks_for_ensemble_tasks(
         ecflow_home,
         rapid_task_name,
         rapid_family_name,
+        ecflow_suite
+    )
+
+    # Create symbolic links to '.ecf' file for each init flows task
+    create_symlinks_for_ensemble_tasks(
+        ecflow_home,
+        init_flows_task_name,
+        init_flows_family_name,
         ecflow_suite
     )
 
@@ -147,9 +196,18 @@ def create(config_path: str) -> None:
     )
     suite.add_family(rapid_run_family)
 
+    # Add the init flows family to the suite
+    init_flows_family = create_init_flows_family(
+        init_flows_family_name,
+        init_flows_task_name,
+        rapid_family_name,
+        is_local=local_run
+    )
+    suite.add_family(init_flows_family)
+
     # Define 'plain_table_task'
     plain_table_task = suite.add_task(plain_table_task)
-    plain_table_task.add_trigger(f"{rapid_family_name} == complete")
+    plain_table_task.add_trigger(f"{init_flows_family_name} == complete")
 
     # Set variables for 'plain_table_task'
     plain_table_ps = os.path.join(

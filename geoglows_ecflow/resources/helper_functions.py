@@ -39,7 +39,7 @@ def create_logger(
     return logger
 
 
-def get_date_timestep_from_forecast_dir(
+def get_date_from_forecast_dir(
     forecast_dir: str,
     log: log.Logger = create_logger(__name__)
 ) -> str:
@@ -94,8 +94,9 @@ def find_current_rapid_output(forecast_directory, vpucode):
     Finds the most current files output from RAPID
     """
     if os.path.exists(forecast_directory):
-        basin_files = glob(os.path.join(forecast_directory,
-                                        f"Qout_{vpucode}_{1}_*.nc"))
+        basin_files = glob(
+            os.path.join(forecast_directory, f"Qout_{vpucode}_*.nc")
+        )
         if len(basin_files) > 0:
             return basin_files
     # there are none found

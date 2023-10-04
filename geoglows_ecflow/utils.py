@@ -51,9 +51,12 @@ def prepare_dir_structure(
                     os.makedirs(suite_logs)
 
             elif type == "family":
-                family_path = os.path.join(workspace, ent["suite"], ent["name"])
-                if not os.path.exists(family_path):
-                    os.makedirs(family_path)
+                for fam in ent:
+                    family_path = os.path.join(
+                        workspace, fam["suite"], fam["name"]
+                    )
+                    if not os.path.exists(family_path):
+                        os.makedirs(family_path)
 
             elif type == "task":
                 for task in ent:
@@ -85,7 +88,8 @@ def prepare_dir_structure(
 def create_symlinks_for_ensemble_tasks(
     workspace: str, task: str, family: str, suite: str
 ) -> None:
-    """Creates a copy of 'ens_member.ecf' for each ensemble member.
+    """Creates a symlink of 'rapid_forecast_task.ecf' for each vpu and ensemble
+        member or a symlink of 'init_flows_task.ecf' for each vpu.
 
     Args:
         workspace (str): Path to the job workspace.
@@ -94,17 +98,23 @@ def create_symlinks_for_ensemble_tasks(
         suite (str): Suite of the task.
     """
     for vpu in VPU_LIST:
-        for i in reversed(range(1, 53)):
+        if task == "init_flows_task":
             src = os.path.join(workspace, suite, f"{task}.ecf")
-            dest = os.path.join(
-                workspace, suite, family, f"{task}_{vpu}_{i}.ecf"
-            )
+            dest = os.path.join(workspace, suite, family, f"{task}_{vpu}.ecf")
             if not os.path.exists(dest):
                 os.symlink(src, dest)
+        else:
+            for i in reversed(range(1, 53)):
+                src = os.path.join(workspace, suite, f"{task}.ecf")
+                dest = os.path.join(
+                    workspace, suite, family, f"{task}_{vpu}_{i}.ecf"
+                )
+                if not os.path.exists(dest):
+                    os.symlink(src, dest)
 
 
 def add_variables(entity: Suite | Family | Task, vars: dict[str, str]) -> None:
-    """_summary_
+    """Add variables to the ecflow entity.
 
     Args:
         entity (Suite | Family | Task): Entity to add variables to.

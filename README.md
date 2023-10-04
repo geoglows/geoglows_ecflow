@@ -36,10 +36,10 @@ ecflow_entities:
     name: geoglows_forecast
     logs: /path/to/suite_log
   family:
-    name: ensemble_family
+    name: rapid_forecast_family
     suite: geoglows_forecast
   task:
-    - name: prep_task
+    - name: forecast_prep_task
       variables:
         - PYSCRIPT
         - IO_LOCATION
@@ -62,11 +62,11 @@ ecflow_entities:
         - FORECAST_RECORDS_DIR
         - LOG_DIR
       suite: geoglows_forecast
-    - name: ens_member
+    - name: rapid_forecast_task
       variables:
         - PYSCRIPT
         - ECF_FILES
-        - JOB_INDEX
+        - JOB_ID
         - RAPID_EXEC
         - EXEC_DIR
         - SUBPROCESS_DIR
