@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "ECFLOW RAPID workflow for GEOGloWS"
 authors = [
     {name = "Michael Souffront", email = "msouffront@aquaveo.com"},
+    {name = "Riley Hales", email = "rchales@byu.edu"},
 ]
 dependencies = [
     "pyyaml>=6.0.1",

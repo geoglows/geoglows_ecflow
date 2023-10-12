@@ -1,203 +1,125 @@
-#################################################################
-# File: spt_extract_plain_table.py
-# Author(s):
-#   Riley Hales
-#   Josh Ogden
-#   Michael Souffront
-#   Wade Roberts
-#   Spencer McDonald
-# Date: 03/07/2018
-# Last Updated: 05/28/2020
-# Purpose: Calculate basic statistics for GloFAS-RAPID files and
-#          extract them to a summary table; interpolate forecast
-#          values for time steps other than 3 hrs
-# Requirements: NCO, netCDF4, pandas, numpy, scipy
-#################################################################
-
-import datetime
-import logging
-import multiprocessing as mp
-import os
-import subprocess as sp
 import sys
 import glob
+import os
+import subprocess as sp
 
 import netCDF4 as nc
 import pandas as pd
-import numpy as np
-from scipy.interpolate import pchip
+import xarray as xr
 
 
-def extract_summary_table(workspace):
-    # calls NCO's nces function to calculate ensemble statistics for the max, mean, and min
-    nces_exec = str(sys.argv[3])
-    for stat in ['max', 'avg', 'min']:
+def extract_summary_table(
+    workspace: str, nces_exec: str, rp_base_dir: str
+) -> None:
+    """Extracts the summary table from the forecast output directory.
+
+    Args:
+        workspace (str): Path to the forecast output directory for a single VPU
+            which contains subdirectories with date names
+        nces_exec (str): Path to the nces executable or recognized cli command
+            if installed in environment. Should be 'nces' if installed in
+            environment using conda
+        rp_base_dir (str): Path to directory containing the return period nc
+            file for a single vpu.
+
+    """
+    # creates file name for the csv file
+    date_string = os.path.split(workspace)[1].replace(".", "")
+    region_name = os.path.basename(os.path.split(workspace)[0])
+    file_name = f"summary_table_{region_name}_{date_string}.parquet"
+    if os.path.exists(file_name):
+        return
+
+    # calls NCO's nces function to calculate ensemble statistics
+    # calculates the max, mean, and min
+    for stat in ["max", "avg", "min"]:
         findstr = 'find {0} -name "Qout*.nc"'.format(workspace)
-        filename = os.path.join(workspace, 'nces.{0}.nc'.format(stat))
+        filename = os.path.join(workspace, "nces.{0}.nc".format(stat))
         ncesstr = "{0} -O --op_typ={1} {2}".format(nces_exec, stat, filename)
-        args = ' | '.join([findstr, ncesstr])
+        args = " | ".join([findstr, ncesstr])
         sp.call(args, shell=True)
 
-    # creates file name for the csv file
-    date_string = os.path.split(workspace)[1].replace('.', '')
-    region_name = os.path.basename(os.path.split(workspace)[0])
-    file_name = f'summary_table_{region_name}_{date_string}.csv'
-    static_path = str(sys.argv[5])
-
     # creating pandas dataframe with return periods
-    era_type = str(sys.argv[4])
-    rp_path = glob.glob(os.path.join(static_path, era_type, region_name, f'*return_periods*.nc*'))[0]
-    logging.info(f'Return Period Path {rp_path}')
-    rp_ncfile = nc.Dataset(rp_path, 'r')
-    rp_df = pd.DataFrame({
-        'return_2': rp_ncfile.variables['return_period_2'][:],
-        'return_5': rp_ncfile.variables['return_period_5'][:],
-        'return_10': rp_ncfile.variables['return_period_10'][:],
-        'return_25': rp_ncfile.variables['return_period_25'][:],
-        'return_50': rp_ncfile.variables['return_period_50'][:],
-        'return_100': rp_ncfile.variables['return_period_100'][:]
-    }, index=rp_ncfile.variables['rivid'][:])
-    rp_ncfile.close()
-
-    # create the summary tables
-    try:
-        # create the summary table dataframe
-        columns = ['comid', 'timestamp', 'max', 'mean', 'color', 'thickness', 'ret_per']
-        summary_table_df = pd.DataFrame(columns=columns)
-
-        # read the date and COMID lists from one of the netcdfs
-        sample_nc = nc.Dataset(os.path.join(workspace, 'nces.avg.nc'), 'r')
-        comids = sample_nc['rivid'][:].tolist()
-        dates = sample_nc['time'][:].tolist()
-        dates = [datetime.datetime.utcfromtimestamp(date).strftime("%m/%d/%y %H:%M") for date in dates]
-        sample_nc.close()
-
-        # create a time series at 3 hour intervals for interpolation
-        interp_x = pd.date_range(
-            start=dates[0],
-            end=dates[-1],
-            freq='3H'
+    rp_path = glob.glob(os.path.join(rp_base_dir, f"returnperiods*.nc*"))[0]
+    with nc.Dataset(rp_path, "r") as rp_ncfile:
+        rp_df = pd.DataFrame(
+            {
+                "return_2": rp_ncfile.variables["rp2"][:],
+                "return_5": rp_ncfile.variables["rp5"][:],
+                "return_10": rp_ncfile.variables["rp10"][:],
+                "return_25": rp_ncfile.variables["rp25"][:],
+                "return_50": rp_ncfile.variables["rp50"][:],
+                "return_100": rp_ncfile.variables["rp100"][:],
+            },
+            index=rp_ncfile.variables["rivid"][:],
         )
-        interp_x_strings = interp_x.strftime("%m/%d/%y %H:%M")
-        new_dates = list(interp_x_strings)
-        dt_dates = pd.to_datetime(dates)
 
-        # read the max and avg flows
-        max_flow_nc = nc.Dataset(os.path.join(workspace, 'nces.max.nc'))
-        max_flow_array = max_flow_nc.variables['Qout'][:].round(2).tolist()
-        max_flow_nc.close()
-        mean_flow_nc = nc.Dataset(os.path.join(workspace, 'nces.avg.nc'))
-        mean_flow_array = mean_flow_nc.variables['Qout'][:].round(2).tolist()
-        mean_flow_nc.close()
+    # read the date and COMID lists from one of the netcdfs
+    with xr.open_dataset(
+        glob.glob(os.path.join(workspace, "nces.avg.nc"))[0]
+    ) as ds:
+        comids = ds["rivid"][:].values
+        dates = ds["time"][:].values
+        mean_flows = ds["Qout"][:].values.round(2)
 
-        # for each comid, interpolate to 3-hourly with pchip, compare to return periods to generate map styling info
-        for index, (comid, maxes, means) in enumerate(zip(comids, max_flow_array, mean_flow_array)):
-            # interpolate maxes and means
-            max_interpolator = pchip(dt_dates, maxes)
-            mean_interpolator = pchip(dt_dates, means)
-            max_flows = max_interpolator(interp_x)
-            mean_flows = mean_interpolator(interp_x)
-            # loop for creating color, thickness, and return period columns
-            colors = []
-            thicknesses = []
-            ret_pers = []
-            for mean_flow in mean_flows:
-                # define reach color based on return periods
-                if mean_flow > rp_df.loc[comid, 'return_50']:
-                    color = 'purple'
-                elif mean_flow > rp_df.loc[comid, 'return_10']:
-                    color = 'red'
-                elif mean_flow > rp_df.loc[comid, 'return_2']:
-                    color = 'yellow'
-                else:
-                    color = 'blue'
+    # read the max and avg flows
+    with nc.Dataset(os.path.join(workspace, "nces.max.nc")) as ds:
+        max_flows = ds["Qout"][:].round(2)
 
-                colors.append(color)
+    mean_flow_df = pd.DataFrame(mean_flows, columns=comids, index=dates)
+    max_flow_df = pd.DataFrame(max_flows, columns=comids, index=dates)
 
-                # define reach thickness based on flow magnitude
-                if mean_flow < 20:
-                    thickness = '1'
-                elif 20 <= mean_flow < 250:
-                    thickness = '2'
-                elif 250 <= mean_flow < 1500:
-                    thickness = '3'
-                elif 1500 <= mean_flow < 10000:
-                    thickness = '4'
-                elif 10000 <= mean_flow < 30000:
-                    thickness = '5'
-                else:
-                    thickness = '6'
+    mean_color_df = pd.DataFrame(columns=comids, index=dates, dtype=str)
+    mean_color_df[:] = "blue"
+    mean_color_df[mean_flow_df.gt(rp_df["return_2"], axis=1)] = "yellow"
+    mean_color_df[mean_flow_df.gt(rp_df["return_10"], axis=1)] = "red"
+    mean_color_df[mean_flow_df.gt(rp_df["return_50"], axis=1)] = "purple"
 
-                thicknesses.append(thickness)
+    mean_thickness_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
+    mean_thickness_df[:] = 1
+    mean_thickness_df[mean_flow_df >= 20] = 2
+    mean_thickness_df[mean_flow_df >= 250] = 3
+    mean_thickness_df[mean_flow_df >= 1500] = 4
+    mean_thickness_df[mean_flow_df >= 10000] = 5
+    mean_thickness_df[mean_flow_df >= 30000] = 6
 
-                # define return period exceeded by the mean forecast
-                if mean_flow > rp_df.loc[comid, 'return_100']:
-                    ret_per = '100'
-                elif mean_flow > rp_df.loc[comid, 'return_50']:
-                    ret_per = '50'
-                elif mean_flow > rp_df.loc[comid, 'return_25']:
-                    ret_per = '25'
-                elif mean_flow > rp_df.loc[comid, 'return_10']:
-                    ret_per = '10'
-                elif mean_flow > rp_df.loc[comid, 'return_5']:
-                    ret_per = '5'
-                elif mean_flow > rp_df.loc[comid, 'return_2']:
-                    ret_per = '2'
-                else:
-                    ret_per = '0'
+    mean_ret_per_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
+    mean_ret_per_df[:] = 0
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_2"], axis=1)] = 2
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_5"], axis=1)] = 5
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_10"], axis=1)] = 10
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_25"], axis=1)] = 25
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_50"], axis=1)] = 50
+    mean_ret_per_df[mean_flow_df.gt(rp_df["return_100"], axis=1)] = 100
 
-                ret_pers.append(ret_per)
+    mean_flow_df = mean_flow_df.stack().to_frame().rename(columns={0: "mean"})
+    max_flow_df = max_flow_df.stack().to_frame().rename(columns={0: "max"})
+    mean_color_df = (
+        mean_color_df.stack().to_frame().rename(columns={0: "color"})
+    )
+    mean_thickness_df = (
+        mean_thickness_df.stack().to_frame().rename(columns={0: "thickness"})
+    )
+    mean_ret_per_df = (
+        mean_ret_per_df.stack().to_frame().rename(columns={0: "ret_per"})
+    )
 
-            summary_table_df = pd.concat([summary_table_df, pd.DataFrame({
-                columns[0]: pd.Series([comid, ] * len(new_dates)),
-                columns[1]: pd.Series(new_dates),
-                columns[2]: pd.Series(max_flows).round(2),
-                columns[3]: pd.Series(mean_flows).round(2),
-                columns[4]: pd.Series(colors),
-                columns[5]: pd.Series(thicknesses),
-                columns[6]: pd.Series(ret_pers)
-            })], ignore_index=True)
-        # write to csv
-        summary_table_df.to_csv(os.path.join(workspace, file_name), index=False)
-    except Exception as e:
-        logging.debug(e)
+    # merge all dataframes
+    summary_table_df = pd.concat(
+        [
+            mean_flow_df,
+            max_flow_df,
+            mean_color_df,
+            mean_thickness_df,
+            mean_ret_per_df,
+        ],
+        axis=1,
+    )
+    summary_table_df.index.names = ["timestamp", "comid"]
+    summary_table_df = summary_table_df.reset_index()
+    summary_table_df.to_parquet(os.path.join(workspace, file_name))
+    return
 
 
-# runs function on file execution
 if __name__ == "__main__":
-    """
-    Arguments:
-
-    1. Absolute path to the rapid-io/output directory
-        This contains a directory for each region
-        Each region directory contains a directory named for the forecast date 
-    2. Path to the logging file
-
-    3. NCO command to compute ensemble stats
-
-    4. era_type: == 'era_5'
-
-    5. static_path: absolute path to the root directory with all
-        return period files. The next level after this directory
-        should be the different era types.
-    """
-    logging.basicConfig(filename=str(sys.argv[2]), level=logging.DEBUG)
-    logging.basicConfig(level=logging.DEBUG)
-
-    # output directory
-    workdir = str(sys.argv[1])
-
-    # list of watersheds
-    region_folders = [os.path.join(workdir, d) for d in os.listdir(workdir) if os.path.isdir(os.path.join(workdir, d))]
-
-    # list of all forecast date folders in all the region folders
-    date_folders = np.array([glob.glob(os.path.join(region_folder, '*')) for region_folder in region_folders]).flatten()
-    date_folders = [d for d in date_folders if os.path.isdir(d)]
-
-    # map function to list of date folders
-    pool = mp.Pool()
-    results = pool.map(extract_summary_table, date_folders)
-
-    pool.close()
-    pool.join()
-    logging.debug('Finished')
+    extract_summary_table(sys.argv[1], sys.argv[2], sys.argv[3])
