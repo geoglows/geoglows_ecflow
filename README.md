@@ -36,8 +36,10 @@ ecflow_entities:
     name: geoglows_forecast
     logs: /path/to/suite_log
   family:
-    name: rapid_forecast_family
-    suite: geoglows_forecast
+    - name: rapid_forecast_family
+      suite: geoglows_forecast
+    - name: init_flows_family
+      suite: geoglows_forecast
   task:
     - name: forecast_prep_task
       variables:
@@ -71,6 +73,12 @@ ecflow_entities:
         - EXEC_DIR
         - SUBPROCESS_DIR
       suite: geoglows_forecast
+    - name: init_flows_task
+      variables:
+        - PYSCRIPT
+        - ECF_FILES
+        - VPU
+      suite: geoglows_forecast
 
 # rapid variables
 rapid_exec: /path/to/rapid_exec
@@ -80,6 +88,7 @@ rapid_io: /path/to/rapid_io
 runoff_dir: /path/to/runoff_dir
 era_type: era5
 era_dir: /path/to/era5_dir
+forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables
 nces_exec: /path/to/nces_exec
