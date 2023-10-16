@@ -129,6 +129,7 @@ def create(config_path: str) -> None:
     runoff_dir = config['runoff_dir']
     era_type = config['era_type']
     era_dir = config['era_dir']
+    forecast_records_dir = config['forecast_records_dir']
     nces_exec = config['nces_exec']
 
     # Prepare the directory structure
@@ -234,7 +235,7 @@ def create(config_path: str) -> None:
         "PYSCRIPT": store_day_one_ps,
         "IO_LOCATION": rapid_io,
         "ERA_LOCATION": era_dir,
-        "FORECAST_RECORDS_DIR": rapid_io,
+        "FORECAST_RECORDS_DIR": forecast_records_dir,
         "LOG_DIR": ecflow_suite_logs
     }
     add_variables(store_day_one, store_day_one_vars)
