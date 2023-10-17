@@ -179,9 +179,7 @@ def rapid_forecast_exec(
                         )
                         qinit_file = ""
 
-            # with TemporaryDirectory() as temp_dir:
-            if True:
-                temp_dir = "/home/michael/geoglows_ecflow/data/rapid_io"
+            with TemporaryDirectory() as temp_dir:
                 inflow_dir = os.path.join(temp_dir, "inflows")
 
                 create_inflow_file(
