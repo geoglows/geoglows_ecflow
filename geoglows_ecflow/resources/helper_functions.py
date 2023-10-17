@@ -240,7 +240,7 @@ class StreamNetworkInitializer(object):
                                         data_values_2d_array = predicted_qout_nc.get_qout_index(comid_index_list,
                                                                                                 time_index=4)
                     except Exception:
-                        print("Invalid ECMWF forecast file {0}".format(forecasted_streamflow_file))
+                        print(f"Invalid ECMWF forecast file {forecasted_streamflow_file}")
                         continue
                     #organize the data
                     for comid_index, comid in enumerate(reordered_comid_list):
@@ -268,14 +268,14 @@ class StreamNetworkInitializer(object):
         """
         Write initial flow file
         """
-        print("Writing to initial flow file: {0}".format(out_file))
+        print(f"Writing to initial flow file: {out_file}")
         if out_file.endswith(".csv"):
             with open(out_file, 'w') as init_flow_file:
                 for stream_index, stream_segment in enumerate(self.stream_segments):
                     if stream_segment.station_flow != None:
-                        init_flow_file.write("{}\n".format(stream_segment.station_flow))
+                        init_flow_file.write(f"{stream_segment.station_flow}\n")
                     else:
-                        init_flow_file.write("{}\n".format(stream_segment.init_flow))
+                        init_flow_file.write(f"{stream_segment.init_flow}\n")
         else:
             init_flows_array = np.zeros(len(self.stream_segments))
             for stream_index, stream_segment in enumerate(self.stream_segments):

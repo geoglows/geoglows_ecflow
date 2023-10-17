@@ -36,7 +36,7 @@ def get_valid_vpucode_list(input_directory):
             valid_input_directories.append(directory)
             log.info(f'Appending directory -  {directory}')
         else:
-            print("{0} incorrectly formatted. Skipping ...".format(directory))
+            print(f"{directory} incorrectly formatted. Skipping ...")
     return valid_input_directories
 
 
