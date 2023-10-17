@@ -103,7 +103,7 @@ def rapid_forecast_exec(
                 riv_bas_id_file=riv_bas_id_file,
                 k_file=k_file,
                 x_file=x_file,
-                ZS_dtM=3 * 60 * 60,  # RAPID internal loop time interval
+                ZS_dtM=3 * 60 * 60,  # Assume 3hr time step
             )
 
             # check for forcing flows
@@ -137,6 +137,7 @@ def rapid_forecast_exec(
                 execute_directory, f"Qout_{vpucode}_{ens_number}.nc"
             )
 
+            # Get qinit file
             qinit_file = ""
             BS_opt_Qinit = False
             if initialize_flows:
@@ -144,7 +145,7 @@ def rapid_forecast_exec(
                 # Try seasonal average file if not
                 for day in [24, 48, 72]:
                     past_date = (
-                        datetime.datetime.strptime(date[:11], "%Y%m%d.%H")
+                        datetime.datetime.strptime(date, "%Y%m%d.%H")
                         - datetime.timedelta(hours=day)
                     ).strftime("%Y%m%dt%H")
                     qinit_file = os.path.join(
@@ -160,13 +161,17 @@ def rapid_forecast_exec(
                         "Trying to initialize from Seasonal Averages ..."
                     )
                     try:
-                        qinit_file = glob(os.path.join(
-                            rapid_input_directory, "seasonal_qinit*.nc"
-                        ))[0]
-                        BS_opt_Qinit = qinit_file and os.path.exists(qinit_file)
+                        qinit_file = glob(
+                            os.path.join(
+                                rapid_input_directory, "seasonal_qinit*.nc"
+                            )
+                        )[0]
+                        BS_opt_Qinit = qinit_file and os.path.exists(
+                            qinit_file
+                        )
                     except Exception as e:
                         print(
-                            f"Failed to initialize from Seasonal Averages: {e}."
+                            f"Failed to initialize from Seasonal Averages."
                         )
                         print(
                             f"WARNING: {qinit_file} not found. "
@@ -174,7 +179,9 @@ def rapid_forecast_exec(
                         )
                         qinit_file = ""
 
-            with TemporaryDirectory() as temp_dir:
+            # with TemporaryDirectory() as temp_dir:
+            if True:
+                temp_dir = "/home/michael/geoglows_ecflow/data/rapid_io"
                 inflow_dir = os.path.join(temp_dir, "inflows")
 
                 create_inflow_file(
@@ -187,24 +194,36 @@ def rapid_forecast_exec(
                     file_label=ens_number,
                 )
 
-                inflow_file_path = case_insensitive_file_search(
-                    inflow_dir, rf"m3_{vpucode}.*?\.nc"
+                # Get forecast chronometry
+                interval = 3 if ens_number < 52 else 1
+                duration = 360 if ens_number < 52 else 240
+
+                start_date = date.split(".")[0]
+                end_date = (
+                    datetime.datetime.strptime(start_date, "%Y%m%d")
+                    + datetime.timedelta(hours=duration)
+                ).strftime("%Y%m%d")
+
+                # Get inflow file path
+                inflow_file_path = os.path.join(
+                    inflow_dir,
+                    f"m3_{vpucode}_{start_date}_{end_date}_{ens_number}.nc",
                 )
 
                 try:
-                    interval_3hr = 3 * 60 * 60  # 3 hours
-                    duration_3hr = 360 * 60 * 60  # 360 hours (15 days)
                     rapid_manager.update_parameters(
-                        ZS_TauR=interval_3hr,
+                        ZS_TauR=interval * 60 * 60,
                         ZS_dtR=15 * 60,
-                        ZS_TauM=duration_3hr,
-                        ZS_dtM=interval_3hr,
-                        ZS_dtF=interval_3hr,
+                        ZS_TauM=duration * 60 * 60,
+                        ZS_dtM=interval * 60 * 60,
+                        ZS_dtF=interval * 60 * 60,
                         Vlat_file=inflow_file_path,
                         Qout_file=outflow_file_name,
                         Qinit_file=qinit_file,
                         BS_opt_Qinit=BS_opt_Qinit,
                     )
+
+                    # run RAPID
                     rapid_manager.run()
                 except Exception as e:
                     rapid_logger.critical(f"Failed to run RAPID: {e}.")
