@@ -64,7 +64,9 @@ def prepare_dir_structure(
                         workspace, task["suite"], f"{task['name']}.ecf"
                     )
 
-                    var_list = " ".join([f"%{var}%" for var in task["variables"]])
+                    var_list = " ".join(
+                        [f"%{var}%" for var in task["variables"]]
+                    )
 
                     if not os.path.exists(task_path):
                         with open(task_path, "w") as f:
@@ -85,11 +87,10 @@ def prepare_dir_structure(
         raise OSError(f"Error creating files/directory: {e}")
 
 
-def create_symlinks_for_ensemble_tasks(
+def create_symlinks_for_tasks(
     workspace: str, task: str, family: str, suite: str
 ) -> None:
-    """Creates a symlink of 'rapid_forecast_task.ecf' for each vpu and ensemble
-        member or a symlink of 'init_flows_task.ecf' for each vpu.
+    """Creates a symlink of 'task.ecf' for each vpu or vpu and ensemble member.
 
     Args:
         workspace (str): Path to the job workspace.
@@ -98,12 +99,7 @@ def create_symlinks_for_ensemble_tasks(
         suite (str): Suite of the task.
     """
     for vpu in VPU_LIST:
-        if task == "init_flows_task":
-            src = os.path.join(workspace, suite, f"{task}.ecf")
-            dest = os.path.join(workspace, suite, family, f"{task}_{vpu}.ecf")
-            if not os.path.exists(dest):
-                os.symlink(src, dest)
-        else:
+        if task == "rapid_forecast_task":
             for i in reversed(range(1, 53)):
                 src = os.path.join(workspace, suite, f"{task}.ecf")
                 dest = os.path.join(
@@ -111,6 +107,11 @@ def create_symlinks_for_ensemble_tasks(
                 )
                 if not os.path.exists(dest):
                     os.symlink(src, dest)
+        else:
+            src = os.path.join(workspace, suite, f"{task}.ecf")
+            dest = os.path.join(workspace, suite, family, f"{task}_{vpu}.ecf")
+            if not os.path.exists(dest):
+                os.symlink(src, dest)
 
 
 def add_variables(entity: Suite | Family | Task, vars: dict[str, str]) -> None:

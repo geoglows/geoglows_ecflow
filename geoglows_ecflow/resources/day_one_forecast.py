@@ -263,7 +263,7 @@ def update_forecast_records(
 
         # set the time variable attributes so that the
         record.variables["time"].setncattr(
-            "units", "hours since {0}0101 00:00:00".format(year)
+            "units", f"hours since {year}0101 00:00:00"
         )
 
         # calculate the number of 3-hourly timesteps that will occur this year
@@ -330,11 +330,11 @@ if __name__ == "__main__":
     # start logging
     start = datetime.datetime.now()
     log = os.path.join(
-        logs_dir, "postprocess_forecasts-" + start.strftime("%Y%m%d")
+        logs_dir, "day_one_forecast-" + start.strftime("%Y%m%d")
     )
     logging.basicConfig(filename=log, filemode="w", level=logging.INFO)
     logging.info(
-        "postprocess_flow_forecasts.py initiated " + start.strftime("%c")
+        "day_one_flow_forecast.py initiated " + start.strftime("%c")
     )
 
     for vpu in vpu_list:

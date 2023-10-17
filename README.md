@@ -40,6 +40,8 @@ ecflow_entities:
       suite: geoglows_forecast
     - name: init_flows_family
       suite: geoglows_forecast
+    - name: esri_table_family
+      suite: geoglows_forecast
   task:
     - name: forecast_prep_task
       variables:
@@ -48,13 +50,13 @@ ecflow_entities:
         - RUNOFF_LOCATION
         - ECF_FILES
       suite: geoglows_forecast
-    - name: plain_table_task
+    - name: esri_table_task
       variables:
         - PYSCRIPT
         - OUT_LOCATION
+        - RETURN_PERIODS_DIR
         - LOG_FILE
         - NCES_EXEC
-        - ERA_TYPE
       suite: geoglows_forecast
     - name: day_one_forecast_task
       variables:
@@ -86,8 +88,7 @@ rapid_exec_dir: /path/to/rapid_exec_dir
 rapid_subprocess_dir: /path/to/rapid_subprocess_dir
 rapid_io: /path/to/rapid_io
 runoff_dir: /path/to/runoff_dir
-era_type: era5
-era_dir: /path/to/era5_dir
+era_dir: /path/to/era_dir
 forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables
