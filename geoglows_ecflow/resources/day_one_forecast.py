@@ -223,7 +223,6 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
 def update_forecast_records(
     vpu, forecast_records, qout_dir, year, first_day_flows, times
 ):
-    breakpoint()
     record_path = os.path.join(forecast_records, vpu)
     if not os.path.exists(record_path):
         os.mkdir(record_path)
