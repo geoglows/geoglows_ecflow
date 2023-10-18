@@ -2,7 +2,7 @@ import os
 import sys
 from ecflow import Defs, Family, Task
 from geoglows_ecflow.utils import (load_config, prepare_dir_structure,
-                                   create_symlinks_for_tasks,
+                                   create_symlinks_for_family_tasks,
                                    add_variables, validate)
 from geoglows_ecflow.resources.constants import VPU_LIST
 
@@ -54,6 +54,45 @@ def create_rapid_run_family(
                     )
 
             family.add_task(task)
+
+    return family
+
+
+def create_nc_to_zarr_family(
+    family_name: str,
+    task_name: str,
+    trigger: str,
+    is_local: bool = False
+) -> Family:
+    """Create the ecflow family for converting netcdf forecast to zarr.
+
+    Args:
+        family_name (str): Name of the family group.
+        task_name (str): Name of the task.
+        trigger (str): Trigger that will start this family.
+        is_local (bool, optional): True if the job is run locally.
+
+    Returns:
+        Family: ecflow family object.
+    """
+    pyscript_path = os.path.join(
+        os.path.dirname(__file__), 'resources', 'netcdf_to_zarr.py'
+    )
+
+    family = Family(family_name)
+    family.add_trigger(f"{trigger} == complete")
+    family.add_variable("PYSCRIPT", pyscript_path)
+
+    for i, vpu in enumerate(VPU_LIST):
+        # Create init flows tasks
+        task = Task(f"{task_name}_{vpu}")
+        task.add_variable("VPU", vpu)
+        if is_local:
+            if i > 0:
+                prev_vpu = VPU_LIST[i - 1]
+                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+
+        family.add_task(task)
 
     return family
 
@@ -168,11 +207,13 @@ def create(config_path: str) -> None:
     rapid_family_name = config['ecflow_entities']['family'][0]['name']
     init_flows_family_name = config['ecflow_entities']['family'][1]['name']
     esri_table_family_name = config['ecflow_entities']['family'][2]['name']
+    nc_to_zarr_family_name = config['ecflow_entities']['family'][3]['name']
     prep_task_name = config['ecflow_entities']['task'][0]['name']
     esri_table_task_name = config['ecflow_entities']['task'][1]['name']
     day_one_forecast_task = config['ecflow_entities']['task'][2]['name']
     rapid_task_name = config['ecflow_entities']['task'][3]['name']
     init_flows_task_name = config['ecflow_entities']['task'][4]['name']
+    nc_to_zarr_task_name = config['ecflow_entities']['task'][5]['name']
     rapid_exec = config['rapid_exec']
     rapid_exec_dir = config['rapid_exec_dir']
     rapid_subprocess_dir = config['rapid_subprocess_dir']
@@ -190,28 +231,15 @@ def create(config_path: str) -> None:
         ecflow_suite_logs
     )
 
-    # Create symbolic links to '.ecf' file for each rapid run task
-    create_symlinks_for_tasks(
-        ecflow_home,
-        rapid_task_name,
-        rapid_family_name,
-        ecflow_suite
-    )
-
-    # Create symbolic links to '.ecf' file for each init flows task
-    create_symlinks_for_tasks(
-        ecflow_home,
-        init_flows_task_name,
-        init_flows_family_name,
-        ecflow_suite
-    )
-
-    # Create symbolic links to '.ecf' file for each esri table task
-    create_symlinks_for_tasks(
-        ecflow_home,
-        esri_table_task_name,
-        esri_table_family_name,
-        ecflow_suite
+    # Create symlinks for all tasks
+    task_family_list = [
+        (rapid_task_name, rapid_family_name),
+        (init_flows_task_name, init_flows_family_name),
+        (esri_table_task_name, esri_table_family_name),
+        (nc_to_zarr_task_name, nc_to_zarr_family_name),
+    ]
+    create_symlinks_for_family_tasks(
+        ecflow_home, ecflow_suite, task_family_list
     )
 
     # Define the ecflow job
@@ -256,10 +284,19 @@ def create(config_path: str) -> None:
     suite.add_family(rapid_run_family)
 
     # Add the init flows family to the suite
+    nc_to_zarr_family = create_nc_to_zarr_family(
+        nc_to_zarr_family_name,
+        nc_to_zarr_task_name,
+        rapid_family_name,
+        is_local=local_run
+    )
+    suite.add_family(nc_to_zarr_family)
+
+    # Add the init flows family to the suite
     init_flows_family = create_init_flows_family(
         init_flows_family_name,
         init_flows_task_name,
-        rapid_family_name,
+        nc_to_zarr_family_name,
         is_local=local_run
     )
     suite.add_family(init_flows_family)

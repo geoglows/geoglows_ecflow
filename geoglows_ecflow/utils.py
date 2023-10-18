@@ -114,6 +114,29 @@ def create_symlinks_for_tasks(
                 os.symlink(src, dest)
 
 
+def create_symlinks_for_family_tasks(
+    ecflow_home: str,
+    ecflow_suite: str,
+    task_family: list[tuple]
+) -> None:
+    """Create symlinks for all tasks in the ecflow job.
+
+    Args:
+        ecflow_home (str): Path to the ecflow home directory.
+        ecflow_suite (str): Name of the ecflow suite.
+        task_family (list[tuple]): List of tuples containing the task and
+            family names.
+    """
+    for task, family in task_family:
+        # Create symbolic links to '.ecf' file for each task
+        create_symlinks_for_tasks(
+            ecflow_home,
+            task,
+            family,
+            ecflow_suite
+        )
+
+
 def add_variables(entity: Suite | Family | Task, vars: dict[str, str]) -> None:
     """Add variables to the ecflow entity.
 

@@ -42,6 +42,8 @@ ecflow_entities:
       suite: geoglows_forecast
     - name: esri_table_family
       suite: geoglows_forecast
+    - name: nc_to_zarr_family
+      suite: geoglows_forecast
   task:
     - name: forecast_prep_task
       variables:
@@ -76,6 +78,12 @@ ecflow_entities:
         - SUBPROCESS_DIR
       suite: geoglows_forecast
     - name: init_flows_task
+      variables:
+        - PYSCRIPT
+        - ECF_FILES
+        - VPU
+      suite: geoglows_forecast
+    - name: nc_to_zarr_task
       variables:
         - PYSCRIPT
         - ECF_FILES
