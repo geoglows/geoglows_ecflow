@@ -44,6 +44,8 @@ ecflow_entities:
       suite: geoglows_forecast
     - name: nc_to_zarr_family
       suite: geoglows_forecast
+    - name: archive_to_aws_family
+      suite: geoglows_forecast
   task:
     - name: forecast_prep_task
       variables:
@@ -89,6 +91,13 @@ ecflow_entities:
         - ECF_FILES
         - VPU
       suite: geoglows_forecast
+    - name: archive_to_aws_task
+      variables:
+        - PYSCRIPT
+        - ECF_FILES
+        - AWS_CONFIG
+        - VPU
+      suite: geoglows_forecast
 
 # rapid variables
 rapid_exec: /path/to/rapid_exec
@@ -101,6 +110,20 @@ forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables
 nces_exec: /path/to/nces_exec
+
+# aws variables
+aws_config: /path/to/aws_config.yml
+```
+
+## AWS configuration file (aws_config.yml)
+
+```yaml
+# aws credentials
+aws_access_key_id: AWS_ACCESS_KEY_ID
+aws_secret_access_key: AWS_SECRET_ACCESS_KEY
+
+# aws s3 bucket
+bucket_name: S3_BUCKET_NAME
 ```
 
 ## Custom ecflow server start (local_ecflow_start.sh)
