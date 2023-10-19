@@ -168,7 +168,6 @@ def create_esri_table_family(
     family = Family(family_name)
     family.add_trigger(f"{trigger} == complete")
     family.add_variable("PYSCRIPT", pyscript_path)
-    family.add_variable("LOG_FILE", os.path.join(logs_dir, 'esri_table.log'))
     family.add_variable("NCES_EXEC", nces_exec)
 
     for i, vpu in enumerate(VPU_LIST):
@@ -176,6 +175,49 @@ def create_esri_table_family(
         task = Task(f"{task_name}_{vpu}")
         task.add_variable("OUT_LOCATION", os.path.join(rapid_output, str(vpu)))
         task.add_variable("RETURN_PERIODS_DIR", os.path.join(rp_dir, str(vpu)))
+        if is_local:
+            if i > 0:
+                prev_vpu = VPU_LIST[i - 1]
+                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+
+        family.add_task(task)
+
+    return family
+
+
+def create_aws_family(
+    family_name: str,
+    task_name: str,
+    aws_config: str,
+    trigger: str,
+    is_local: bool = False
+) -> Family:
+    """Create the ecflow family for archiving zarr forecasts to aws.
+
+    Args:
+        family_name (str): Name of the family group.
+        task_name (str): Name of the task.
+        logs_dir (str): Path to the logs directory.
+        aws_config (str): Path to aws configuration yaml file.
+        trigger (str): Trigger that will start this family.
+        is_local (bool, optional): True if the job is run locally.
+
+    Returns:
+        Family: ecflow family object.
+    """
+    pyscript_path = os.path.join(
+        os.path.dirname(__file__), 'resources', 'archive_to_aws.py'
+    )
+
+    family = Family(family_name)
+    family.add_trigger(f"{trigger} == complete")
+    family.add_variable("PYSCRIPT", pyscript_path)
+    family.add_variable("AWS_CONFIG", aws_config)
+
+    for i, vpu in enumerate(VPU_LIST):
+        # Create init flows tasks
+        task = Task(f"{task_name}_{vpu}")
+        task.add_variable("VPU", vpu)
         if is_local:
             if i > 0:
                 prev_vpu = VPU_LIST[i - 1]
@@ -208,12 +250,14 @@ def create(config_path: str) -> None:
     init_flows_family_name = config['ecflow_entities']['family'][1]['name']
     esri_table_family_name = config['ecflow_entities']['family'][2]['name']
     nc_to_zarr_family_name = config['ecflow_entities']['family'][3]['name']
+    aws_family_name = config['ecflow_entities']['family'][4]['name']
     prep_task_name = config['ecflow_entities']['task'][0]['name']
     esri_table_task_name = config['ecflow_entities']['task'][1]['name']
     day_one_forecast_task = config['ecflow_entities']['task'][2]['name']
     rapid_task_name = config['ecflow_entities']['task'][3]['name']
     init_flows_task_name = config['ecflow_entities']['task'][4]['name']
     nc_to_zarr_task_name = config['ecflow_entities']['task'][5]['name']
+    aws_task_name = config['ecflow_entities']['task'][6]['name']
     rapid_exec = config['rapid_exec']
     rapid_exec_dir = config['rapid_exec_dir']
     rapid_subprocess_dir = config['rapid_subprocess_dir']
@@ -222,6 +266,7 @@ def create(config_path: str) -> None:
     era_dir = config['era_dir']
     forecast_records_dir = config['forecast_records_dir']
     nces_exec = config['nces_exec']
+    aws_config = config['aws_config']
 
     # Prepare the directory structure
     prepare_dir_structure(
@@ -237,6 +282,7 @@ def create(config_path: str) -> None:
         (init_flows_task_name, init_flows_family_name),
         (esri_table_task_name, esri_table_family_name),
         (nc_to_zarr_task_name, nc_to_zarr_family_name),
+        (aws_task_name, aws_family_name)
     ]
     create_symlinks_for_family_tasks(
         ecflow_home, ecflow_suite, task_family_list
@@ -330,6 +376,16 @@ def create(config_path: str) -> None:
         "LOG_DIR": ecflow_suite_logs
     }
     add_variables(store_day_one, store_day_one_vars)
+
+    # Add the aws family to the suite
+    aws_family = create_aws_family(
+        aws_family_name,
+        aws_task_name,
+        aws_config,
+        day_one_forecast_task,
+        is_local=local_run
+    )
+    suite.add_family(aws_family)
 
     # Validate definition job
     validate(defs)
