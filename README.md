@@ -50,9 +50,10 @@ ecflow_entities:
     - name: forecast_prep_task
       variables:
         - PYSCRIPT
-        - IO_LOCATION
-        - RUNOFF_LOCATION
         - ECF_FILES
+        - RAPID_INPUT
+        - RAPID_OUTPUT
+        - RUNOFF_DIR
       suite: geoglows_forecast
     - name: esri_table_task
       variables:
@@ -103,9 +104,10 @@ ecflow_entities:
 rapid_exec: /path/to/rapid_exec
 rapid_exec_dir: /path/to/rapid_exec_dir
 rapid_subprocess_dir: /path/to/rapid_subprocess_dir
-rapid_io: /path/to/rapid_io
+rapid_input: /path/to/rapid_input
+rapid_output: /path/to/rapid_output
 runoff_dir: /path/to/runoff_dir
-era_dir: /path/to/era_dir
+rapid_historical: /path/to/rapid_historical
 forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables
