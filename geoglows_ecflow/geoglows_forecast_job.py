@@ -261,9 +261,10 @@ def create(config_path: str) -> None:
     rapid_exec = config['rapid_exec']
     rapid_exec_dir = config['rapid_exec_dir']
     rapid_subprocess_dir = config['rapid_subprocess_dir']
-    rapid_io = config['rapid_io']
+    rapid_input = config['rapid_input']
+    rapid_output = config['rapid_output']
     runoff_dir = config['runoff_dir']
-    era_dir = config['era_dir']
+    rapid_historical = config['rapid_historical']
     forecast_records_dir = config['forecast_records_dir']
     nces_exec = config['nces_exec']
     aws_config = config['aws_config']
@@ -299,7 +300,10 @@ def create(config_path: str) -> None:
         "ECF_INCLUDE": ecflow_home,
         "ECF_FILES": os.path.join(ecflow_home, ecflow_suite),
         "ECF_HOME": ecflow_home,
-        "ECF_BIN": ecflow_bin if local_run else ""
+        "ECF_BIN": ecflow_bin if local_run else "",
+        "RAPID_INPUT": rapid_input,
+        "RAPID_OUTPUT": rapid_output,
+        "RUNOFF_DIR": runoff_dir
     }
     add_variables(suite, suite_variables)
 
@@ -310,11 +314,7 @@ def create(config_path: str) -> None:
     prep_task_ps = os.path.join(
         os.path.dirname(__file__), 'resources', 'prep_rapid_forecast.py'
     )
-    prep_task_vars = {
-        "PYSCRIPT": prep_task_ps,
-        "IO_LOCATION": rapid_io,
-        "RUNOFF_LOCATION": runoff_dir
-    }
+    prep_task_vars = {"PYSCRIPT": prep_task_ps}
     add_variables(prep_task, prep_task_vars)
 
     # Add the rapid run family to the suite
@@ -353,8 +353,8 @@ def create(config_path: str) -> None:
         esri_table_task_name,
         ecflow_suite_logs,
         nces_exec,
-        os.path.join(rapid_io, 'output'),
-        era_dir,
+        rapid_output,
+        rapid_historical,
         init_flows_family_name,
         is_local=local_run
     )
@@ -370,8 +370,7 @@ def create(config_path: str) -> None:
     )
     store_day_one_vars = {
         "PYSCRIPT": store_day_one_ps,
-        "IO_LOCATION": rapid_io,
-        "ERA_LOCATION": era_dir,
+        "ERA_LOCATION": rapid_historical,
         "FORECAST_RECORDS_DIR": forecast_records_dir,
         "LOG_DIR": ecflow_suite_logs
     }
