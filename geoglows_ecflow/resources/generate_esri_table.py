@@ -17,10 +17,10 @@ def postprocess_vpu_forecast_directory(
     nces_exec: str = "nces",
 ):
     # creates file name for the csv file
-    date_string = os.path.basename(os.path.dirname(rapid_output))  # should be a date in YYYYMMDDHH format
-    style_table_file_name = (
-        f"mapstyletable_{vpu}_{date_string}.parquet"
-    )
+    date_string = os.path.basename(
+        os.path.dirname(rapid_output)
+    )  # should be a date in YYYYMMDDHH format
+    style_table_file_name = f"mapstyletable_{vpu}_{date_string}.parquet"
     if os.path.exists(os.path.join(rapid_output, style_table_file_name)):
         logging.info(f"Style table already exists: {style_table_file_name}")
         return
@@ -116,21 +116,14 @@ def postprocess_vpu_forecast_directory(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "rapid_output",
+        "workspace",
         nargs=1,
-        help="Path to the forecast output directory for a single VPU which "
-        "contains subdirectories with date names",
+        help="Path to the daily workspace directory, named in YYYYMMDDHH format, containing "
+        + "(1) *.runoff.nc IFS forecast files, "
+        + "(2) an output directory of routed discharge netcdfs, "
+        + "(3) symlinks to the rapid inputs and return periods directories",
     )
-    parser.add_argument(
-        "returnperiods",
-        nargs=1,
-        help="Path to base directory for return periods nc files.",
-    )
-    parser.add_argument(
-        "vpu",
-        nargs=1,
-        help="id number of vpu to process"
-    )
+    parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     parser.add_argument(
         "ncesexec",
         nargs=1,
@@ -140,17 +133,17 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    rapid_output = args.rapid_output[0]
-    returnperiods = args.returnperiods[0]
+    workspace = args.workspace[0]
+    rapid_output = os.path.join(workspace, "output")
+    returnperiods = os.path.join(workspace, "return_periods_dir")
     vpu = args.vpu[0]
     nces = args.ncesexec[0]
 
     logging.basicConfig(
-        filemode="a",
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout
+        stream=sys.stdout,
     )
 
     postprocess_vpu_forecast_directory(rapid_output, returnperiods, vpu, nces)

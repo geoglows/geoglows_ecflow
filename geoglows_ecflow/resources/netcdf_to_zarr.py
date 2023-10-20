@@ -1,19 +1,19 @@
+import argparse
 import os
-import sys
 import json
 import pandas as pd
 import xarray as xr
 from glob import glob
 
 
-def netcdf_forecasts_to_zarr(suite_home: str, vpu: str) -> None:
+def netcdf_forecasts_to_zarr(ecf_files: str, vpu: str) -> None:
     """Converts the netcdf forecast files to zarr.
 
     Args:
-        suite_home (str): Path to the suite home directory.
-        vpu (str): VPU code.
+        ecf_files (str): Path to the suite home directory
+        vpu (str): VPU code
     """
-    with open(os.path.join(suite_home, "rapid_run.json"), "r") as f:
+    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
         data = json.load(f)
         # Get rapid output path
         rapid_output = data["output_dir"]
@@ -44,6 +44,7 @@ def netcdf_forecasts_to_zarr(suite_home: str, vpu: str) -> None:
         )
 
         # Set 'Qout' fillvalue
+        # todo figure out how to set fill value better
         combined_ens_dataset["Qout"] = combined_ens_dataset["Qout"].where(
             combined_ens_dataset["Qout"].notnull(), other=-9999
         )
@@ -56,13 +57,26 @@ def netcdf_forecasts_to_zarr(suite_home: str, vpu: str) -> None:
         combined_ens_dataset = combined_ens_dataset.chunk(chunk_sizes)
 
         # Create zarr output path
-        zarr_output_path = os.path.join(rapid_output, f"Qout_{vpu}_{date}.zarr")
+        zarr_output_path = os.path.join(
+            rapid_output, f"Qout_{vpu}_{date}.zarr"
+        )
 
         # Write ensemble dataset to zarr
         combined_ens_dataset.to_zarr(zarr_output_path, mode="w")
 
 
 if __name__ == "__main__":
-    suite_home = sys.argv[1]
-    vpu = sys.argv[2]
-    netcdf_forecasts_to_zarr(suite_home, vpu)
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("ecf_files",
+                        nargs=1,
+                        help="Path to the suite home directory.", )
+    parser.add_argument("vpu",
+                        nargs=1,
+                        help="VPU code.", )
+
+    args = parser.parse_args()
+    ecf_files = args.ecf_files[0]
+    vpu = args.vpu[0]
+
+    netcdf_forecasts_to_zarr(ecf_files, vpu)

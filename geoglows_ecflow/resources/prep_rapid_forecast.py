@@ -1,27 +1,33 @@
-import sys
 import os
+import sys
+import logging
 import json
+import argparse
 from glob import glob
 from geoglows_ecflow.resources.helper_functions import (
-    create_logger,
     get_valid_vpucode_list,
     get_ensemble_number_from_forecast,
 )
 
-logger = create_logger("prep_task_log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stdout,
+)
 
 
 def rapid_forecast_preprocess(
-    suite_home: str,
+    ecf_files: str,
     rapid_input: str,
     rapid_output: str,
     runoff_dir: str,
-    initialize_flows: bool = True
+    initialize_flows: bool = True,
 ) -> list[tuple]:
     """Creates a dict of jobs to run.
 
     Args:
-        suite_home (str): Path where the suite files will be created.
+        ecf_files (str): Path where the suite files will be created.
         rapid_input (str): Path to the rapid input.
         rapid_output (str): Path to the rapid output.
         runoff_dir (str): Path to runoff base directory containing ensemble
@@ -31,13 +37,12 @@ def rapid_forecast_preprocess(
     Returns:
         dict[dict]: dict of jobs to run.
     """
-
     # Create master dict
     master_dict = {
         "input_dir": rapid_input,
         "output_dir": rapid_output,
         "runoff_dir": runoff_dir,
-        "date": os.path.basename(runoff_dir)
+        "date": os.path.basename(runoff_dir),
     }
 
     # Get list of rapid vpu input directories
@@ -53,7 +58,7 @@ def rapid_forecast_preprocess(
 
     # submit jobs to downsize ecmwf files to vpu
     for vpu in rapid_vpu_input_dirs:
-        logger.info(f"Adding rapid input directory {vpu}")
+        logging.info(f"Adding rapid input directory {vpu}")
 
         # get vpu-specific input directory
         master_vpu_input_dir = os.path.join(rapid_input, vpu)
@@ -81,19 +86,41 @@ def rapid_forecast_preprocess(
                 "ensemble": ensemble_number,
                 "input_dir": master_vpu_input_dir,
                 "output_file": master_rapid_outflow_file,
-                "init_flows": initialize_flows
+                "init_flows": initialize_flows,
             }
 
-    with open(os.path.join(suite_home, "rapid_run.json"), "w") as f:
+    with open(os.path.join(ecf_files, "rapid_run.json"), "w") as f:
         json.dump(master_dict, f)
+
+    logging.info("Completed creating job config json file")
 
     return master_dict
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "ecf_files",
+        nargs=1,
+        help="Path to suite home directory",
+    )
+    parser.add_argument(
+        "workspace",
+        nargs=1,
+        help="Path to workspace directory",
+    )
+
+    args = parser.parse_args()
+    ecf_files = args.ecf_files[0]
+    workspace = args.workspace[0]
+
+    rapid_input = os.path.join(workspace, "input")
+    rapid_output = os.path.join(workspace, "output")
+    runoff_dir = workspace
+
     rapid_forecast_preprocess(
-        suite_home=sys.argv[1],
-        rapid_input=sys.argv[2],
-        rapid_output=sys.argv[3],
-        runoff_dir=sys.argv[4]
+        ecf_files=ecf_files,
+        rapid_input=rapid_input,
+        rapid_output=rapid_output,
+        runoff_dir=runoff_dir,
     )
