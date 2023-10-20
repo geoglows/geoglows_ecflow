@@ -58,9 +58,8 @@ ecflow_entities:
     - name: esri_table_task
       variables:
         - PYSCRIPT
-        - OUT_LOCATION
-        - RETURN_PERIODS_DIR
-        - LOG_FILE
+        - RAPID_INPUT
+        - VPU
         - NCES_EXEC
       suite: geoglows_forecast
     - name: day_one_forecast_task
@@ -107,7 +106,7 @@ rapid_subprocess_dir: /path/to/rapid_subprocess_dir
 rapid_input: /path/to/rapid_input
 rapid_output: /path/to/rapid_output
 runoff_dir: /path/to/runoff_dir
-rapid_historical: /path/to/rapid_historical
+return_periods_dir: /path/to/return_periods_dir
 forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables

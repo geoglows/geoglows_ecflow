@@ -148,7 +148,6 @@ def create_esri_table_family(
     vpu_list: list[str],
     nces_exec: str,
     rapid_output: str,
-    rp_dir: str,
     trigger: str,
     is_local: bool = False
 ) -> Family:
@@ -160,7 +159,6 @@ def create_esri_table_family(
         vpu_list (list[str]): List of VPU codes.
         nces_exec (str): Path to the nces executable.
         rapid_output (str): Path to the rapid output directory.
-        rp_dir (str): Path to the return periods directory.
         trigger (str): Trigger that will start this family.
         is_local (bool, optional): True if the job is run locally.
 
@@ -179,8 +177,8 @@ def create_esri_table_family(
     for i, vpu in enumerate(vpu_list):
         # Create init flows tasks
         task = Task(f"{task_name}_{vpu}")
-        task.add_variable("OUT_LOCATION", os.path.join(rapid_output, str(vpu)))
-        task.add_variable("RETURN_PERIODS_DIR", os.path.join(rp_dir, str(vpu)))
+        task.add_variable("RAPID_OUTPUT", rapid_output)
+        task.add_variable("VPU", str(vpu))
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
@@ -271,7 +269,7 @@ def create(config_path: str) -> None:
     rapid_input = config['rapid_input']
     rapid_output = config['rapid_output']
     runoff_dir = config['runoff_dir']
-    rapid_historical = config['rapid_historical']
+    return_periods_dir = config['return_periods_dir']
     forecast_records_dir = config['forecast_records_dir']
     nces_exec = config['nces_exec']
     aws_config = config['aws_config']
@@ -313,7 +311,8 @@ def create(config_path: str) -> None:
         "ECF_BIN": ecflow_bin if local_run else "",
         "RAPID_INPUT": rapid_input,
         "RAPID_OUTPUT": rapid_output,
-        "RUNOFF_DIR": runoff_dir
+        "RUNOFF_DIR": runoff_dir,
+        "RETURN_PERIODS_DIR": return_periods_dir
     }
     add_variables(suite, suite_variables)
 
@@ -367,7 +366,6 @@ def create(config_path: str) -> None:
         vpu_list,
         nces_exec,
         rapid_output,
-        rapid_historical,
         init_flows_family_name,
         is_local=local_run
     )
@@ -383,7 +381,7 @@ def create(config_path: str) -> None:
     )
     store_day_one_vars = {
         "PYSCRIPT": store_day_one_ps,
-        "ERA_LOCATION": rapid_historical,
+        "ERA_LOCATION": return_periods_dir,
         "FORECAST_RECORDS_DIR": forecast_records_dir,
         "LOG_DIR": ecflow_suite_logs
     }
