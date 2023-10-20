@@ -37,6 +37,7 @@ def rapid_forecast_preprocess(
         "input_dir": rapid_input,
         "output_dir": rapid_output,
         "runoff_dir": runoff_dir,
+        "date": os.path.basename(runoff_dir)
     }
 
     # Get list of rapid vpu input directories
