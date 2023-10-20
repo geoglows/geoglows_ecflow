@@ -2,7 +2,6 @@ import os
 import shutil
 from yaml import safe_load
 from ecflow import Defs, Suite, Family, Task
-from geoglows_ecflow.resources.constants import VPU_LIST
 
 
 def load_config(config_path: str) -> dict:
@@ -88,17 +87,18 @@ def prepare_dir_structure(
 
 
 def create_symlinks_for_tasks(
-    workspace: str, task: str, family: str, suite: str
+    workspace: str, suite: str, task: str, family: str, vpu_list: list[str]
 ) -> None:
     """Creates a symlink of 'task.ecf' for each vpu or vpu and ensemble member.
 
     Args:
         workspace (str): Path to the job workspace.
+        suite (str): Suite of the task.
         task (str): Name of the task.
         family (str): Family group for the task.
-        suite (str): Suite of the task.
+        vpu_list (list[str]): List of vpu codes.
     """
-    for vpu in VPU_LIST:
+    for vpu in vpu_list:
         if task == "rapid_forecast_task":
             for i in reversed(range(1, 53)):
                 src = os.path.join(workspace, suite, f"{task}.ecf")
@@ -117,7 +117,8 @@ def create_symlinks_for_tasks(
 def create_symlinks_for_family_tasks(
     ecflow_home: str,
     ecflow_suite: str,
-    task_family: list[tuple]
+    task_family: list[tuple],
+    vpu_list: list[str],
 ) -> None:
     """Create symlinks for all tasks in the ecflow job.
 
@@ -126,14 +127,16 @@ def create_symlinks_for_family_tasks(
         ecflow_suite (str): Name of the ecflow suite.
         task_family (list[tuple]): List of tuples containing the task and
             family names.
+        vpu_list (list[str]): List of vpu codes.
     """
     for task, family in task_family:
         # Create symbolic links to '.ecf' file for each task
         create_symlinks_for_tasks(
             ecflow_home,
+            ecflow_suite,
             task,
             family,
-            ecflow_suite
+            vpu_list
         )
 
 

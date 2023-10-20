@@ -77,11 +77,12 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     """
     valid_input_directories = []
     # Append to valid_input_directories if directory, skip if not
-    for directory in os.listdir(input_directory):
-        if os.path.isdir(os.path.join(input_directory, directory)):
-            valid_input_directories.append(directory)
+    for name in os.listdir(input_directory):
+        match = re.search("\d{3}", name)
+        if match and os.path.isdir(os.path.join(input_directory, name)):
+            valid_input_directories.append(name)
         else:
-            print(f"{directory} not a directory. Skipping...")
+            print(f"{name} is not a directory or a 3-digit VPU. Skipping...")
     return valid_input_directories
 
 
