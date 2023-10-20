@@ -296,31 +296,26 @@ def compute_init_rapid_flows(
         print("No current forecasts found. Skipping ...")
 
 
-def compute_all_rapid_init_flows(ecflow_home: str, vpu: str) -> None:
-    with open(os.path.join(ecflow_home, "rapid_run.json"), "r") as f:
+def compute_all_rapid_init_flows(suite_home: str, vpu: str) -> None:
+    with open(os.path.join(suite_home, "rapid_run.json"), "r") as f:
         data = json.load(f)
-        rapid_input_dir = data["input_dir"]
-        rapid_output_dir = data["output_dir"]
-        for date in data["dates"].keys():
-            # Initialize flows for next run
-            input_directory = os.path.join(rapid_input_dir, vpu)
+        rapid_input = data["input_dir"]
+        rapid_output = data["output_dir"]
+        date = data["date"]
 
-            forecast_directory = os.path.join(rapid_output_dir, vpu, date)
+        # Initialize flows for next run
+        rapid_vpu_input_dir = os.path.join(rapid_input, vpu)
 
-            if os.path.exists(forecast_directory):
-                basin_files = find_current_rapid_output(
-                    forecast_directory, vpu
-                )
-                try:
-                    compute_init_rapid_flows(
-                        basin_files, input_directory, date
-                    )
-                except Exception as ex:
-                    print(ex)
-                    pass
+        basin_files = find_current_rapid_output(rapid_output, vpu)
+
+        try:
+            compute_init_rapid_flows(basin_files, rapid_vpu_input_dir, date)
+        except Exception as ex:
+            print(ex)
+            pass
 
 
 if __name__ == "__main__":
-    ecflow_home = sys.argv[1]
+    suite_home = sys.argv[1]
     vpu = sys.argv[2]
-    compute_all_rapid_init_flows(ecflow_home, vpu)
+    compute_all_rapid_init_flows(suite_home, vpu)
