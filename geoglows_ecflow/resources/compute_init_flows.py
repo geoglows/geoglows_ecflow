@@ -1,7 +1,6 @@
 import os
-import sys
 import json
-import datetime
+import argparse
 import numpy as np
 import netCDF4 as nc
 from glob import glob
@@ -267,7 +266,7 @@ def _cleanup_past_qinit(input_directory):
 
 
 def compute_init_rapid_flows(
-    prediction_files, input_directory, forecast_date_timestep
+    prediction_files, input_directory, date
 ):
     """Gets mean of all 52 ensembles 12-hrs in future and prints to netcdf (nc)
         or CSV (csv) format as initial flow Qinit_file (BS_opt_Qinit). The
@@ -276,13 +275,7 @@ def compute_init_rapid_flows(
     """
     # remove old init files for this basin
     _cleanup_past_qinit(input_directory)
-    current_forecast_date = datetime.datetime.strptime(
-        forecast_date_timestep[:11], "%Y%m%d.%H"
-    )
-    current_forecast_date_string = current_forecast_date.strftime("%Y%m%dt%H")
-    init_file_location = os.path.join(
-        input_directory, "Qinit_%s.nc" % current_forecast_date_string
-    )
+    init_file_location = os.path.join(input_directory, "Qinit_%s.nc" % date)
     # check to see if exists and only perform operation once
     if prediction_files:
         sni = StreamNetworkInitializer(
@@ -296,31 +289,36 @@ def compute_init_rapid_flows(
         print("No current forecasts found. Skipping ...")
 
 
-def compute_all_rapid_init_flows(ecflow_home: str, vpu: str) -> None:
-    with open(os.path.join(ecflow_home, "rapid_run.json"), "r") as f:
+def compute_all_rapid_init_flows(ecf_files: str, vpu: str) -> None:
+    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
         data = json.load(f)
-        rapid_input_dir = data["input_dir"]
-        rapid_output_dir = data["output_dir"]
-        for date in data["dates"].keys():
-            # Initialize flows for next run
-            input_directory = os.path.join(rapid_input_dir, vpu)
+        rapid_input = data["input_dir"]
+        rapid_output = data["output_dir"]
+        date = data["date"]
 
-            forecast_directory = os.path.join(rapid_output_dir, vpu, date)
+        # Initialize flows for next run
+        rapid_vpu_input_dir = os.path.join(rapid_input, vpu)
 
-            if os.path.exists(forecast_directory):
-                basin_files = find_current_rapid_output(
-                    forecast_directory, vpu
-                )
-                try:
-                    compute_init_rapid_flows(
-                        basin_files, input_directory, date
-                    )
-                except Exception as ex:
-                    print(ex)
-                    pass
+        basin_files = find_current_rapid_output(rapid_output, vpu)
+
+        try:
+            compute_init_rapid_flows(basin_files, rapid_vpu_input_dir, date)
+        except Exception as ex:
+            print(ex)
+            pass
 
 
 if __name__ == "__main__":
-    ecflow_home = sys.argv[1]
-    vpu = sys.argv[2]
-    compute_all_rapid_init_flows(ecflow_home, vpu)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("ecf_files",
+                        nargs=1,
+                        help="Path to the ECF files", )
+    parser.add_argument("vpu",
+                        nargs=1,
+                        help="vpu number to process", )
+
+    args = parser.parse_args()
+    ecf_files = args.ecf_files[0]
+    vpu = args.vpu[0]
+
+    compute_all_rapid_init_flows(ecf_files, vpu)

@@ -3,28 +3,18 @@ import glob
 import logging
 import os
 import sys
-import re
-
+import argparse
 import numpy as np
 import pandas as pd
-import xarray
+import xarray as xr
 import netCDF4 as nc
 
 
-def merge_forecast_qout_files(rapidio_vpu_output):
-    # pick the most recent date, append to the file path
-    dates = []
-    for elem in os.listdir(rapidio_vpu_output):
-        regex = "\d{8}\.\d{2}"
-        match = re.search(regex, elem)
-        if match:
-            dates.append(match.group())
-
-    recent_date = sorted(dates)[-1]
-    qout_dir = os.path.join(rapidio_vpu_output, recent_date)
-
+def merge_forecast_qout_files(rapid_output: str, vpu: str or int):
     # list the forecast files
-    prediction_files = sorted(glob.glob(os.path.join(qout_dir, "Qout*.nc")))
+    prediction_files = sorted(
+        glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
+    )
 
     # merge them into a single file joined by ensemble number
     ensemble_index_list = []
@@ -33,12 +23,9 @@ def merge_forecast_qout_files(rapidio_vpu_output):
         ensemble_index_list.append(
             int(os.path.basename(forecast_nc)[:-3].split("_")[-1])
         )
-        qout_datasets.append(xarray.open_dataset(forecast_nc).Qout)
-    return (
-        xarray.concat(
-            qout_datasets, pd.Index(ensemble_index_list, name="ensemble")
-        ),
-        qout_dir,
+        qout_datasets.append(xr.open_dataset(forecast_nc).Qout)
+    return xr.concat(
+        qout_datasets, pd.Index(ensemble_index_list, name="ensemble")
     )
 
 
@@ -82,19 +69,10 @@ def check_for_return_period_flow(
     if max_flow >= r100:
         date_r100 = get_time_of_first_exceedence(forecasted_flows_df, r100)
 
-    try:
-        lat = float(rp_data["lat"].values)
-        lon = float(rp_data["lon"].values)
-    except:
-        lat = ""
-        lon = ""
-
     new_row = pd.DataFrame(
         {
             "comid": rp_data.index[0],
             "stream_order": stream_order,
-            "stream_lat": lat,
-            "stream_lon": lon,
             "max_forecasted_flow": round(max_flow, 2),
             "date_exceeds_return_period_2": date_r2,
             "date_exceeds_return_period_5": date_r5,
@@ -118,18 +96,20 @@ def get_time_of_first_exceedence(forecasted_flows_df, flow):
     return daily_flows["times"].values[0]
 
 
-def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
+def postprocess_vpu(
+    vpu,
+    rapid_input,
+    rapid_output,
+    return_periods_dir,
+    forecast_records,
+):
     # build the propert directory paths
-    rapidio_input = os.path.join(rapidio, "input")
-    rapidio_vpu_output = os.path.join(rapidio, "output", vpu)
 
     # make the pandas dataframe to store the summary info
     largeflows = pd.DataFrame(
         columns=[
             "comid",
             "stream_order",
-            "stream_lat",
-            "stream_lon",
             "max_forecasted_flow",
             "date_exceeds_return_period_2",
             "date_exceeds_return_period_5",
@@ -142,7 +122,10 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
 
     # merge the most recent forecast files into a single xarray dataset
     logging.info("  merging forecasts")
-    merged_forecasts, qout_dir = merge_forecast_qout_files(rapidio_vpu_output)
+
+    merged_forecasts = xr.open_dataset(
+        os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+    )
 
     # collect the times and comids from the forecasts
     logging.info("  reading info from forecasts")
@@ -154,16 +137,16 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
     # read the return period file
     logging.info("  reading return period file")
     return_period_file = os.path.join(
-        historical_sim, vpu, f"returnperiods_{vpu}.nc"
+        return_periods_dir, f"returnperiods_{vpu}.nc"
     )
-    return_period_data = xarray.open_dataset(return_period_file).to_dataframe()
+    return_period_data = xr.open_dataset(return_period_file).to_dataframe()
 
     # read the list of large streams
     logging.info("  creating dataframe of large streams")
-    streams_file_path = os.path.join(rapidio_input, "master_table.parquet")
+    streams_file_path = os.path.join(rapid_input, "master_table.parquet")
     streams_df = pd.read_parquet(streams_file_path)
     large_vpu_streams_df = streams_df[
-        (streams_df["VPUCode"] == int(vpu)) & ((streams_df["strmOrder"] >= 2))
+        (streams_df["VPUCode"] == int(vpu)) & ((streams_df["strmOrder"] >= 3))
     ]
 
     # get the list of comids
@@ -176,7 +159,8 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
     # now process the mean flows for each river in the vpu
     for comid in comids:
         # compute the timeseries of average flows
-        means = np.array(merged_forecasts.sel(rivid=comid)).mean(axis=0)
+        means = merged_forecasts.sel(rivid=comid).Qout.values.flatten()
+
         # put it in a dataframe with the times series
         forecasted_flows = (
             times.to_frame(name="times")
@@ -205,17 +189,37 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
     logging.info("  updating the forecast records file")
     try:
         update_forecast_records(
-            vpu, forecast_records, qout_dir, year, first_day_flows, times
+            vpu, forecast_records, rapid_output, year, first_day_flows, times
         )
     except Exception as excp:
         logging.info("  unexpected error updating the forecast records")
         logging.info(excp)
 
     # now save the return periods summary csv to the right output directory
-    largeflows.to_csv(
-        os.path.join(qout_dir, "forecasted_return_periods_summary.csv"),
-        index=False,
+    largeflow_dtypes = {
+        "comid": int,
+        "stream_order": int,
+        "max_forecasted_flow": float,
+        "date_exceeds_return_period_2": "datetime64[ns]",
+        "date_exceeds_return_period_5": "datetime64[ns]",
+        "date_exceeds_return_period_10": "datetime64[ns]",
+        "date_exceeds_return_period_25": "datetime64[ns]",
+        "date_exceeds_return_period_50": "datetime64[ns]",
+        "date_exceeds_return_period_100": "datetime64[ns]",
+    }
+    # largeflows.astype(largeflow_dtypes)
+
+    largeflows = (
+        largeflows.merge(
+            streams_df[["lat", "lon", "TDXHydroLinkNo"]],
+            how="inner",
+            left_on="comid",
+            right_on="TDXHydroLinkNo",
+        )
+        .drop(columns=["comid"])
+        .replace({'': np.nan})
     )
+    largeflows.to_parquet(os.path.join(rapid_output, f"forecastwarnings_{vpu}.parquet"))
 
     return
 
@@ -223,15 +227,17 @@ def postprocess_vpu(vpu, rapidio, historical_sim, forecast_records):
 def update_forecast_records(
     vpu, forecast_records, qout_dir, year, first_day_flows, times
 ):
-    record_path = os.path.join(forecast_records, vpu)
-    if not os.path.exists(record_path):
-        os.mkdir(record_path)
-    record_path = os.path.join(record_path, f"forecast_record-{year}-{vpu}.nc")
+    if not os.path.exists(forecast_records):
+        os.mkdir(forecast_records)
+
+    record_path = os.path.join(
+        forecast_records, f"forecastrecord_{vpu}_{year}.nc"
+    )
 
     # if there isn't a forecast record for this year, make one
     if not os.path.exists(record_path):
         # using a forecast file as a reference
-        reference = glob.glob(os.path.join(qout_dir, "Qout*.nc"))[0]
+        reference = glob.glob(os.path.join(qout_dir, f"Qout_{vpu}_*.nc"))[0]
         reference = nc.Dataset(reference)
         # make a new record file
         record = nc.Dataset(record_path, "w")
@@ -253,14 +259,15 @@ def update_forecast_records(
         record.createVariable(
             "Qout",
             reference.variables["Qout"].dtype,
-            dimensions=("rivid", "time"),
+            dimensions=("time", "rivid"),
+            fill_value=np.nan,
         )
         # and also prepopulate the lat, lon, and rivid fields
         record.variables["rivid"][:] = reference.variables["rivid"][:]
         record.variables["lat"][:] = reference.variables["lat"][:]
         record.variables["lon"][:] = reference.variables["lon"][:]
 
-        # set the time variable attributes so that the
+        # set the time variable attributes
         record.variables["time"].setncattr(
             "units", f"hours since {year}0101 00:00:00"
         )
@@ -295,7 +302,7 @@ def update_forecast_records(
     # convert all those saved flows to a np array and write to the netcdf
     first_day_flows = np.asarray(first_day_flows)
     record_netcdf.variables["Qout"][
-        :, start_time_index:end_time_index
+        start_time_index:end_time_index, :
     ] = first_day_flows
 
     # save and close the netcdf
@@ -306,52 +313,32 @@ def update_forecast_records(
 
 
 if __name__ == "__main__":
-    """
-    arg1 = path to the rapid-io directory where the input and output directory
-        are located. You need the input directory because thats where the
-        master_table.parquet file is located. outputs contain the forecst
-        outputs
-    arg2 = path to directory where the historical data are stored. the folder
-        that contains 1 folder for each vpu.
-    arg3 = path to the directory where the 1day forecasts are saved. the folder
-        that contains 1 folder for each vpu.
-    arg4 = path to the logs directory
-    """
-    # accept the arguments
-    rapidio = sys.argv[1]
-    historical_sim = sys.argv[2]
-    forecast_records = sys.argv[3]
-    logs_dir = sys.argv[4]
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "workspace",
+        nargs=1,
+        help="path to the daily workspace directory",
+    )
+    parser.add_argument(
+        "vpu",
+        nargs=1,
+        help="VPU number",
+    )
 
-    # list of vpu to be processed based on their forecasts
-    vpu_list = os.listdir(os.path.join(rapidio, "output"))
+    args = parser.parse_args()
+    workspace = args.workspace[0]
+    vpu = args.vpu[0]
+    rapid_input = os.path.join(workspace, "input")
+    rapid_output = os.path.join(workspace, "output")
+    returnperiods = os.path.join(workspace, "return_periods_dir")
+    forecast_records = os.path.join(workspace, "forecast_records")
+    rapid_output = os.path.join(workspace, "output")
 
     # start logging
-    start = datetime.datetime.now()
-    log = os.path.join(
-        logs_dir, "day_one_forecast-" + start.strftime("%Y%m%d")
-    )
-    logging.basicConfig(filename=log, filemode="w", level=logging.INFO)
-    logging.info(
-        "day_one_flow_forecast.py initiated " + start.strftime("%c")
+    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+
+    postprocess_vpu(
+        vpu, rapid_input, rapid_output, returnperiods, forecast_records
     )
 
-    for vpu in vpu_list:
-        try:
-            # log start messages
-            logging.info("")
-            logging.info("WORKING ON VPU: " + vpu)
-            logging.info(
-                "  elapsed time: " + str(datetime.datetime.now() - start)
-            )
-            # attempt to postprocess the vpu
-            postprocess_vpu(vpu, rapidio, historical_sim, forecast_records)
-        except Exception as e:
-            logging.info(e)
-            logging.info(
-                "      VPU failed at " + datetime.datetime.now().strftime("%c")
-            )
-
-    logging.info("")
     logging.info("Finished at " + datetime.datetime.now().strftime("%c"))
-    logging.info("Total elapsed time: " + str(datetime.datetime.now() - start))

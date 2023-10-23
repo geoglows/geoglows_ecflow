@@ -30,6 +30,7 @@ pip install -e .
 python_exec: /path/to/python
 ecflow_home: /path/to/ecflow_home
 ecflow_bin: /path/to/ecflow_client  # Required for local run
+workspace: /path/to/workspace
 local_run: false
 ecflow_entities:
   suite:
@@ -46,29 +47,29 @@ ecflow_entities:
       suite: geoglows_forecast
     - name: archive_to_aws_family
       suite: geoglows_forecast
+    - name: day_one_family
+      suite: geoglows_forecast
   task:
     - name: forecast_prep_task
       variables:
         - PYSCRIPT
-        - IO_LOCATION
-        - RUNOFF_LOCATION
         - ECF_FILES
+        - RAPID_INPUT
+        - RAPID_OUTPUT
+        - RUNOFF_DIR
       suite: geoglows_forecast
     - name: esri_table_task
       variables:
         - PYSCRIPT
-        - OUT_LOCATION
-        - RETURN_PERIODS_DIR
-        - LOG_FILE
+        - WORKSPACE
+        - VPU
         - NCES_EXEC
       suite: geoglows_forecast
     - name: day_one_forecast_task
       variables:
         - PYSCRIPT
-        - IO_LOCATION
-        - ERA_LOCATION
-        - FORECAST_RECORDS_DIR
-        - LOG_DIR
+        - WORKSPACE
+        - VPU
       suite: geoglows_forecast
     - name: rapid_forecast_task
       variables:
@@ -103,10 +104,6 @@ ecflow_entities:
 rapid_exec: /path/to/rapid_exec
 rapid_exec_dir: /path/to/rapid_exec_dir
 rapid_subprocess_dir: /path/to/rapid_subprocess_dir
-rapid_io: /path/to/rapid_io
-runoff_dir: /path/to/runoff_dir
-era_dir: /path/to/era_dir
-forecast_records_dir: /path/to/forecast_records_dir
 
 # nco variables
 nces_exec: /path/to/nces_exec
