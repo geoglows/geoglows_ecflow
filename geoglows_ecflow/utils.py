@@ -115,7 +115,7 @@ def create_symlinks_for_tasks(
 
 
 def create_symlinks_for_family_tasks(
-    ecflow_home: str,
+    workspace: str,
     ecflow_suite: str,
     task_family: list[tuple],
     vpu_list: list[str],
@@ -123,7 +123,7 @@ def create_symlinks_for_family_tasks(
     """Create symlinks for all tasks in the ecflow job.
 
     Args:
-        ecflow_home (str): Path to the ecflow home directory.
+        workspace (str): Path to the job workspace.
         ecflow_suite (str): Name of the ecflow suite.
         task_family (list[tuple]): List of tuples containing the task and
             family names.
@@ -132,7 +132,7 @@ def create_symlinks_for_family_tasks(
     for task, family in task_family:
         # Create symbolic links to '.ecf' file for each task
         create_symlinks_for_tasks(
-            ecflow_home,
+            workspace,
             ecflow_suite,
             task,
             family,

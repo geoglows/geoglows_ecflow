@@ -1,5 +1,5 @@
-import sys
 import os
+import argparse
 import datetime
 import json
 from tempfile import TemporaryDirectory
@@ -15,13 +15,22 @@ from basininflow.inflow import create_inflow_file
 
 
 def rapid_forecast_exec(
-    suite_home: str,
+    ecf_files: str,
     job_id: str,
     rapid_executable_location: str,
     mp_execute_directory: str,
     subprocess_forecast_log_dir: str,
 ) -> None:
-    with open(os.path.join(suite_home, "rapid_run.json"), "r") as f:
+    """Runs GEOGloWS RAPID forecast.
+
+    Args:
+        ecf_files (str): Path to suite home directory.
+        job_id (str): Job ID.
+        rapid_executable_location (str): Path to RAPID executable.
+        mp_execute_directory (str): Path intermediate directory for RAPID.
+        subprocess_forecast_log_dir (str): Path to RAPID log directory.
+    """
+    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
         data = json.load(f)
         date = data["date"]
 
@@ -238,14 +247,42 @@ def rapid_forecast_exec(
 
 
 if __name__ == "__main__":
-    suite_home = sys.argv[1]
-    job_id = sys.argv[2]
-    rapid_executable_location = sys.argv[3]
-    mp_execute_directory = sys.argv[4]
-    subprocess_forecast_log_dir = sys.argv[5]
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "ecf_files",
+        nargs=1,
+        help="Path to suite home directory",
+    )
+    argparser.add_argument(
+        "job_id",
+        nargs=1,
+        help="Job ID",
+    )
+    argparser.add_argument(
+        "rapid_executable_location",
+        nargs=1,
+        help="Path to RAPID executable",
+    )
+    argparser.add_argument(
+        "mp_execute_directory",
+        nargs=1,
+        help="Path intermediate directory for RAPID",
+    )
+    argparser.add_argument(
+        "subprocess_forecast_log_dir",
+        nargs=1,
+        help="Path to RAPID log directory",
+    )
+
+    args = argparser.parse_args()
+    ecf_files = args.ecf_files[0]
+    job_id = args.job_id[0]
+    rapid_executable_location = args.rapid_executable_location[0]
+    mp_execute_directory = args.mp_execute_directory[0]
+    subprocess_forecast_log_dir = args.subprocess_forecast_log_dir[0]
 
     rapid_forecast_exec(
-        suite_home,
+        ecf_files,
         job_id,
         rapid_executable_location,
         mp_execute_directory,
