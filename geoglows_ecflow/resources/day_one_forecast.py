@@ -122,7 +122,7 @@ def postprocess_vpu(
 
     # merge the most recent forecast files into a single xarray dataset
     logging.info("  merging forecasts")
-    # merged_forecasts = merge_forecast_qout_files(rapid_output, vpu)
+
     merged_forecasts = xr.open_dataset(
         os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
     )
@@ -159,7 +159,6 @@ def postprocess_vpu(
     # now process the mean flows for each river in the vpu
     for comid in comids:
         # compute the timeseries of average flows
-        # means = np.array(merged_forecasts.sel(rivid=comid)).mean(axis=0)
         means = merged_forecasts.sel(rivid=comid).Qout.values.flatten()
 
         # put it in a dataframe with the times series
@@ -230,6 +229,7 @@ def update_forecast_records(
 ):
     if not os.path.exists(forecast_records):
         os.mkdir(forecast_records)
+
     record_path = os.path.join(
         forecast_records, f"forecastrecord_{vpu}_{year}.nc"
     )
@@ -259,14 +259,15 @@ def update_forecast_records(
         record.createVariable(
             "Qout",
             reference.variables["Qout"].dtype,
-            dimensions=("rivid", "time"),
+            dimensions=("time", "rivid"),
+            fill_value=np.nan,
         )
         # and also prepopulate the lat, lon, and rivid fields
         record.variables["rivid"][:] = reference.variables["rivid"][:]
         record.variables["lat"][:] = reference.variables["lat"][:]
         record.variables["lon"][:] = reference.variables["lon"][:]
 
-        # set the time variable attributes so that the
+        # set the time variable attributes
         record.variables["time"].setncattr(
             "units", f"hours since {year}0101 00:00:00"
         )
@@ -301,7 +302,7 @@ def update_forecast_records(
     # convert all those saved flows to a np array and write to the netcdf
     first_day_flows = np.asarray(first_day_flows)
     record_netcdf.variables["Qout"][
-        :, start_time_index:end_time_index
+        start_time_index:end_time_index, :
     ] = first_day_flows
 
     # save and close the netcdf

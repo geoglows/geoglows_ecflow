@@ -14,7 +14,7 @@ dependencies = [
     "xarray>=2023.8.0",
     "fastparquet>=2023.8.0",
     "boto3>=1.28.65",
-    "basininflow>=0.4.0",
+    "basininflow>=0.9.0",
     "RAPIDpy>=2.6.0",  # Install manually
 ]
 requires-python = ">=3.10"
