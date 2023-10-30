@@ -15,7 +15,7 @@ dependencies = [
     "fastparquet>=2023.8.0",
     "boto3>=1.28.65",
     "basininflow>=0.9.0",
-    "RAPIDpy>=2.6.0",  # Install manually
+    # "RAPIDpy>=2.6.0",  # Install manually
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -33,8 +33,8 @@ test = [
 [tool.coverage.report]
 show_missing = true
 
-[tool.setuptools]
-packages = ["geoglows_ecflow"]
+[tool.setuptools.packages.find]
+include = ["geoglows_ecflow"]
 
 [build-system]
 requires = ["setuptools>=61"]
