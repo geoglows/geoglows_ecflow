@@ -1,0 +1,17 @@
+name: geoglows_ecflow
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - ecflow
+  - nco
+  - pyyaml
+  - numpy
+  - pandas
+  - fastparquet
+  - xarray
+  - netcdf4
+  - boto3
+  - pip:
+    - basininflow @ git+https://pypi.org/project/basininflow/
+    - RAPIDpy @ git+https://github.com/BYU-Hydroinformatics/RAPIDpy/@netcdf_qinit
