@@ -53,7 +53,7 @@ class StreamNetworkInitializer(object):
         self._generate_network_from_connectivity()
 
         # add gage id and natur flow to network
-        if gage_ids_natur_flow_file != None:
+        if gage_ids_natur_flow_file is not None:
             if (
                 os.path.exists(gage_ids_natur_flow_file)
                 and gage_ids_natur_flow_file
@@ -68,9 +68,7 @@ class StreamNetworkInitializer(object):
         """
         if forecasted_streamflow_files:
             # get list of COMIDS
-            print(
-                "Computing initial flows from the past ECMWF forecast ..."
-            )
+            print("Computing initial flows from the past ECMWF forecast ...")
             with RAPIDDataset(forecasted_streamflow_files[0]) as qout_nc:
                 (
                     comid_index_list,
@@ -181,7 +179,7 @@ class StreamNetworkInitializer(object):
                 for stream_index, stream_segment in enumerate(
                     self.stream_segments
                 ):
-                    if stream_segment.station_flow != None:
+                    if stream_segment.station_flow is not None:
                         init_flow_file.write(
                             "{}\n".format(stream_segment.station_flow)
                         )
@@ -195,7 +193,7 @@ class StreamNetworkInitializer(object):
                 self.stream_segments
             ):
                 try:
-                    if stream_segment.station_flow != None:
+                    if stream_segment.station_flow is not None:
                         init_flows_array[
                             stream_index
                         ] = stream_segment.station_flow
@@ -261,17 +259,23 @@ def _cleanup_past_qinit(input_directory):
     for past_init_flow_file in past_init_flow_files:
         try:
             os.remove(past_init_flow_file)
-        except:
+        except Exception:
             pass
 
 
 def compute_init_rapid_flows(
-    prediction_files, input_directory, date
-):
-    """Gets mean of all 52 ensembles 12-hrs in future and prints to netcdf (nc)
-        or CSV (csv) format as initial flow Qinit_file (BS_opt_Qinit). The
+    prediction_files: list, input_directory: str, date: str
+) -> None:
+    """Gets mean of all 52 ensembles for the next day and prints to netcdf (nc)
+        format as initial flow Qinit_file (BS_opt_Qinit). The
         assumptions are that Qinit_file is ordered the same way as
         rapid_connect_file if subset of list, add zero where there is no flow.
+
+    Args:
+        prediction_files (list): List of paths to RAPID output files for a
+            specific VPU for each ensemble.
+        input_directory (str): Path to rapid input directory for specific VPU.
+        date (str): Date of the forecast in YYYYMMDDHH format.
     """
     # remove old init files for this basin
     _cleanup_past_qinit(input_directory)
@@ -289,8 +293,13 @@ def compute_init_rapid_flows(
         print("No current forecasts found. Skipping ...")
 
 
-def compute_all_rapid_init_flows(ecf_files: str, vpu: str) -> None:
-    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
+def compute_all_rapid_init_flows(workspace: str, vpu: str) -> None:
+    """Computes initial flows for all basins in the vpu.
+
+    Args:
+        workspace (str): Path to rapid_run.json base directory.
+    """
+    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         data = json.load(f)
         rapid_input = data["input_dir"]
         rapid_output = data["output_dir"]
@@ -310,15 +319,19 @@ def compute_all_rapid_init_flows(ecf_files: str, vpu: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("ecf_files",
-                        nargs=1,
-                        help="Path to the ECF files", )
-    parser.add_argument("vpu",
-                        nargs=1,
-                        help="vpu number to process", )
+    parser.add_argument(
+        "workspace",
+        nargs=1,
+        help="Path to rapid_run.json base directory.",
+    )
+    parser.add_argument(
+        "vpu",
+        nargs=1,
+        help="vpu number to process.",
+    )
 
     args = parser.parse_args()
-    ecf_files = args.ecf_files[0]
+    workspace = args.workspace[0]
     vpu = args.vpu[0]
 
-    compute_all_rapid_init_flows(ecf_files, vpu)
+    compute_all_rapid_init_flows(workspace, vpu)

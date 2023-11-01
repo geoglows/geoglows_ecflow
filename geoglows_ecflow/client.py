@@ -38,8 +38,8 @@ def add_definition(definition: str, host_port: str = "localhost:2500") -> None:
         print(f"Loading '{definition_name}' definition into the server.")
         ci = Client(host_port)
 
-        ci.sync_local()   # sync definitions from server
-        defs = ci.get_defs() # retrieve the defs from ci
+        ci.sync_local()  # sync definitions from server
+        defs = ci.get_defs()  # retrieve the defs from ci
 
         # Add definition if not exist, replace if exist
         if defs is None:

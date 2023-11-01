@@ -5,11 +5,11 @@ import yaml
 import boto3
 
 
-def upload_to_s3(ecf_files: str, aws_config_file: str, vpu: str):
+def upload_to_s3(workspace: str, aws_config_file: str, vpu: str):
     """Uploads GEOGloWS forecast output to AWS.
 
     Args:
-        ecf_files (str): Path to suite home directory.
+        workspace (str): Path to rapid_run.json base directory.
         aws_config_file (str): Path to AWS config file.
         vpu (str): VPU code.
     """
@@ -25,7 +25,7 @@ def upload_to_s3(ecf_files: str, aws_config_file: str, vpu: str):
             aws_secret_access_key=SECRET_ACCESS_KEY,
         )
 
-    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         # Get data
         data = json.load(f)
         date = data["date"]
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # Get ecflow home directory
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
-        "ecf_files",
+        "workspace",
         nargs=1,
         help="Path to suite home directory",
     )
@@ -63,8 +63,8 @@ if __name__ == "__main__":
     )
 
     args = argparser.parse_args()
-    ecf_files = args.ecf_files[0]
+    workspace = args.workspace[0]
     aws_config_file = args.aws_config_file[0]
     vpu = args.vpu[0]
 
-    upload_to_s3(ecf_files, aws_config_file, vpu)
+    upload_to_s3(workspace, aws_config_file, vpu)

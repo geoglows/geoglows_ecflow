@@ -6,14 +6,14 @@ import xarray as xr
 from glob import glob
 
 
-def netcdf_forecasts_to_zarr(ecf_files: str, vpu: str) -> None:
+def netcdf_forecasts_to_zarr(workspace: str, vpu: str) -> None:
     """Converts the netcdf forecast files to zarr.
 
     Args:
-        ecf_files (str): Path to the suite home directory
-        vpu (str): VPU code
+        workspace (str): Path to rapid_run.json base directory.
+        vpu (str): VPU code.
     """
-    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         data = json.load(f)
         # Get rapid output path
         rapid_output = data["output_dir"]
@@ -23,8 +23,9 @@ def netcdf_forecasts_to_zarr(ecf_files: str, vpu: str) -> None:
         forecast_nc_list = glob(os.path.join(rapid_output, f"Qout_{vpu}*.nc"))
 
         # Sort list based on ensemble number
-        sort_key = lambda x: int(os.path.basename(x)[:-3].split("_")[-1])
-        forecast_nc_list.sort(key=sort_key)
+        forecast_nc_list.sort(
+            key=lambda x: int(os.path.basename(x)[:-3].split("_")[-1])
+        )
 
         # Get list of netcdf ensemble datasets
         ens_list = [
@@ -68,15 +69,19 @@ def netcdf_forecasts_to_zarr(ecf_files: str, vpu: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("ecf_files",
-                        nargs=1,
-                        help="Path to the suite home directory.", )
-    parser.add_argument("vpu",
-                        nargs=1,
-                        help="VPU code.", )
+    parser.add_argument(
+        "workspace",
+        nargs=1,
+        help="Path to the suite home directory.",
+    )
+    parser.add_argument(
+        "vpu",
+        nargs=1,
+        help="VPU code.",
+    )
 
     args = parser.parse_args()
-    ecf_files = args.ecf_files[0]
+    workspace = args.workspace[0]
     vpu = args.vpu[0]
 
-    netcdf_forecasts_to_zarr(ecf_files, vpu)
+    netcdf_forecasts_to_zarr(workspace, vpu)

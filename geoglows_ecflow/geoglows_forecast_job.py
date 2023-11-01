@@ -1,9 +1,13 @@
 import os
 import sys
 from ecflow import Defs, Family, Task
-from geoglows_ecflow.utils import (load_config, prepare_dir_structure,
-                                   create_symlinks_for_family_tasks,
-                                   add_variables, validate)
+from geoglows_ecflow.utils import (
+    load_config,
+    prepare_dir_structure,
+    create_symlinks_for_family_tasks,
+    add_variables,
+    validate,
+)
 from geoglows_ecflow.resources.helper_functions import get_valid_vpucode_list
 
 
@@ -15,7 +19,7 @@ def create_rapid_run_family(
     rapid_exec: str,
     rapid_exec_dir: str,
     rapid_subprocess_dir: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for the main rapid run.
 
@@ -33,7 +37,7 @@ def create_rapid_run_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'run_rapid_forecast.py'
+        os.path.dirname(__file__), "resources", "run_rapid_forecast.py"
     )
 
     family = Family(family_name)
@@ -47,7 +51,7 @@ def create_rapid_run_family(
         # Create the ensemble tasks
         for j in reversed(range(1, 53)):
             task = Task(f"{task_name}_{vpu}_{j}")
-            task.add_variable("JOB_ID", f'job_{vpu}_{j}')
+            task.add_variable("JOB_ID", f"job_{vpu}_{j}")
             if is_local:
                 if i > 0 or j != 52:
                     prev_vpu = vpu_list[i - 1] if j + 1 > 52 else vpu
@@ -65,7 +69,7 @@ def create_nc_to_zarr_family(
     task_name: str,
     vpu_list: list[str],
     trigger: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for converting netcdf forecast to zarr.
 
@@ -80,7 +84,7 @@ def create_nc_to_zarr_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'netcdf_to_zarr.py'
+        os.path.dirname(__file__), "resources", "netcdf_to_zarr.py"
     )
 
     family = Family(family_name)
@@ -94,7 +98,7 @@ def create_nc_to_zarr_family(
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
-                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+                task.add_trigger(f"{task_name}_{prev_vpu} == complete")
 
         family.add_task(task)
 
@@ -106,7 +110,7 @@ def create_init_flows_family(
     task_name: str,
     vpu_list: list[str],
     trigger: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for initializing flows.
 
@@ -121,7 +125,7 @@ def create_init_flows_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'compute_init_flows.py'
+        os.path.dirname(__file__), "resources", "compute_init_flows.py"
     )
 
     family = Family(family_name)
@@ -135,7 +139,7 @@ def create_init_flows_family(
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
-                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+                task.add_trigger(f"{task_name}_{prev_vpu} == complete")
 
         family.add_task(task)
 
@@ -148,7 +152,7 @@ def create_esri_table_family(
     vpu_list: list[str],
     nces_exec: str,
     trigger: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for generating esri tables.
 
@@ -164,7 +168,7 @@ def create_esri_table_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'generate_esri_table.py'
+        os.path.dirname(__file__), "resources", "generate_esri_table.py"
     )
 
     family = Family(family_name)
@@ -179,7 +183,7 @@ def create_esri_table_family(
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
-                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+                task.add_trigger(f"{task_name}_{prev_vpu} == complete")
 
         family.add_task(task)
 
@@ -191,7 +195,7 @@ def create_day_one_family(
     task_name: str,
     vpu_list: list[str],
     trigger: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for forecast_records.
 
@@ -207,7 +211,7 @@ def create_day_one_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'day_one_forecast.py'
+        os.path.dirname(__file__), "resources", "day_one_forecast.py"
     )
 
     family = Family(family_name)
@@ -221,7 +225,7 @@ def create_day_one_family(
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
-                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+                task.add_trigger(f"{task_name}_{prev_vpu} == complete")
 
         family.add_task(task)
 
@@ -234,7 +238,7 @@ def create_aws_family(
     vpu_list: list[str],
     aws_config: str,
     trigger: str,
-    is_local: bool = False
+    is_local: bool = False,
 ) -> Family:
     """Create the ecflow family for archiving zarr forecasts to aws.
 
@@ -250,7 +254,7 @@ def create_aws_family(
         Family: ecflow family object.
     """
     pyscript_path = os.path.join(
-        os.path.dirname(__file__), 'resources', 'archive_to_aws.py'
+        os.path.dirname(__file__), "resources", "archive_to_aws.py"
     )
 
     family = Family(family_name)
@@ -265,7 +269,7 @@ def create_aws_family(
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
-                task.add_trigger( f"{task_name}_{prev_vpu} == complete")
+                task.add_trigger(f"{task_name}_{prev_vpu} == complete")
 
         family.add_task(task)
 
@@ -283,42 +287,39 @@ def create(config_path: str) -> None:
     """
     # Load the configuration file
     config = load_config(config_path)
-    python_exec = config['python_exec']
-    ecflow_home = config['ecflow_home']
-    ecflow_bin = config.get('ecflow_bin')
-    workspace = config['workspace']
-    local_run = config.get('local_run')
-    ecflow_entities = config['ecflow_entities']
-    ecflow_suite = config['ecflow_entities']['suite']['name']
-    ecflow_suite_logs = config['ecflow_entities']['suite']['logs']
-    rapid_family_name = config['ecflow_entities']['family'][0]['name']
-    init_flows_family_name = config['ecflow_entities']['family'][1]['name']
-    esri_table_family_name = config['ecflow_entities']['family'][2]['name']
-    nc_to_zarr_family_name = config['ecflow_entities']['family'][3]['name']
-    aws_family_name = config['ecflow_entities']['family'][4]['name']
-    day_one_family_name = config['ecflow_entities']['family'][5]['name']
-    prep_task_name = config['ecflow_entities']['task'][0]['name']
-    esri_table_task_name = config['ecflow_entities']['task'][1]['name']
-    day_one_task_name = config['ecflow_entities']['task'][2]['name']
-    rapid_task_name = config['ecflow_entities']['task'][3]['name']
-    init_flows_task_name = config['ecflow_entities']['task'][4]['name']
-    nc_to_zarr_task_name = config['ecflow_entities']['task'][5]['name']
-    aws_task_name = config['ecflow_entities']['task'][6]['name']
-    rapid_exec = config['rapid_exec']
-    rapid_exec_dir = config['rapid_exec_dir']
-    rapid_subprocess_dir = config['rapid_subprocess_dir']
-    nces_exec = config['nces_exec']
-    aws_config = config['aws_config']
+    python_exec = config["python_exec"]
+    ecflow_home = config["ecflow_home"]
+    ecflow_bin = config.get("ecflow_bin")
+    workspace = config["workspace"]
+    local_run = config.get("local_run")
+    ecflow_entities = config["ecflow_entities"]
+    ecflow_suite = config["ecflow_entities"]["suite"]["name"]
+    ecflow_suite_logs = config["ecflow_entities"]["suite"]["logs"]
+    rapid_family_name = config["ecflow_entities"]["family"][0]["name"]
+    init_flows_family_name = config["ecflow_entities"]["family"][1]["name"]
+    esri_table_family_name = config["ecflow_entities"]["family"][2]["name"]
+    nc_to_zarr_family_name = config["ecflow_entities"]["family"][3]["name"]
+    aws_family_name = config["ecflow_entities"]["family"][4]["name"]
+    day_one_family_name = config["ecflow_entities"]["family"][5]["name"]
+    prep_task_name = config["ecflow_entities"]["task"][0]["name"]
+    esri_table_task_name = config["ecflow_entities"]["task"][1]["name"]
+    day_one_task_name = config["ecflow_entities"]["task"][2]["name"]
+    rapid_task_name = config["ecflow_entities"]["task"][3]["name"]
+    init_flows_task_name = config["ecflow_entities"]["task"][4]["name"]
+    nc_to_zarr_task_name = config["ecflow_entities"]["task"][5]["name"]
+    aws_task_name = config["ecflow_entities"]["task"][6]["name"]
+    rapid_exec = config["rapid_exec"]
+    rapid_exec_dir = config["rapid_exec_dir"]
+    rapid_subprocess_dir = config["rapid_subprocess_dir"]
+    nces_exec = config["nces_exec"]
+    aws_config = config["aws_config"]
 
     # Get vpu list
     vpu_list = get_valid_vpucode_list(os.path.join(workspace, "input"))
 
     # Prepare the directory structure
     prepare_dir_structure(
-        python_exec,
-        ecflow_home,
-        ecflow_entities,
-        ecflow_suite_logs
+        python_exec, ecflow_home, ecflow_entities, ecflow_suite_logs
     )
 
     # Create symlinks for all tasks
@@ -328,7 +329,7 @@ def create(config_path: str) -> None:
         (esri_table_task_name, esri_table_family_name),
         (nc_to_zarr_task_name, nc_to_zarr_family_name),
         (day_one_task_name, day_one_family_name),
-        (aws_task_name, aws_family_name)
+        (aws_task_name, aws_family_name),
     ]
     create_symlinks_for_family_tasks(
         ecflow_home, ecflow_suite, task_family_list, vpu_list
@@ -346,7 +347,7 @@ def create(config_path: str) -> None:
         "ECF_FILES": os.path.join(ecflow_home, ecflow_suite),
         "ECF_HOME": ecflow_home,
         "ECF_BIN": ecflow_bin if local_run else "",
-        "WORKSPACE": workspace
+        "WORKSPACE": workspace,
     }
     add_variables(suite, suite_variables)
 
@@ -355,7 +356,7 @@ def create(config_path: str) -> None:
 
     # Set variables for 'prep_task'
     prep_task_ps = os.path.join(
-        os.path.dirname(__file__), 'resources', 'prep_rapid_forecast.py'
+        os.path.dirname(__file__), "resources", "prep_rapid_forecast.py"
     )
     prep_task_vars = {"PYSCRIPT": prep_task_ps}
     add_variables(prep_task, prep_task_vars)
@@ -369,7 +370,7 @@ def create(config_path: str) -> None:
         rapid_exec,
         rapid_exec_dir,
         rapid_subprocess_dir,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(rapid_run_family)
 
@@ -380,7 +381,7 @@ def create(config_path: str) -> None:
         vpu_list,
         nces_exec,
         rapid_family_name,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(esri_table_family)
 
@@ -390,7 +391,7 @@ def create(config_path: str) -> None:
         nc_to_zarr_task_name,
         vpu_list,
         esri_table_family_name,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(nc_to_zarr_family)
 
@@ -400,7 +401,7 @@ def create(config_path: str) -> None:
         init_flows_task_name,
         vpu_list,
         nc_to_zarr_family_name,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(init_flows_family)
 
@@ -410,7 +411,7 @@ def create(config_path: str) -> None:
         day_one_task_name,
         vpu_list,
         init_flows_family_name,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(day_one_family)
 
@@ -421,7 +422,7 @@ def create(config_path: str) -> None:
         vpu_list,
         aws_config,
         day_one_family_name,
-        is_local=local_run
+        is_local=local_run,
     )
     suite.add_family(aws_family)
 

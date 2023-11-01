@@ -191,23 +191,9 @@ def postprocess_vpu(
         update_forecast_records(
             vpu, forecast_records, rapid_output, year, first_day_flows, times
         )
-    except Exception as excp:
+    except Exception as e:
         logging.info("  unexpected error updating the forecast records")
-        logging.info(excp)
-
-    # now save the return periods summary csv to the right output directory
-    largeflow_dtypes = {
-        "comid": int,
-        "stream_order": int,
-        "max_forecasted_flow": float,
-        "date_exceeds_return_period_2": "datetime64[ns]",
-        "date_exceeds_return_period_5": "datetime64[ns]",
-        "date_exceeds_return_period_10": "datetime64[ns]",
-        "date_exceeds_return_period_25": "datetime64[ns]",
-        "date_exceeds_return_period_50": "datetime64[ns]",
-        "date_exceeds_return_period_100": "datetime64[ns]",
-    }
-    # largeflows.astype(largeflow_dtypes)
+        logging.info(e)
 
     largeflows = (
         largeflows.merge(
@@ -217,9 +203,11 @@ def postprocess_vpu(
             right_on="TDXHydroLinkNo",
         )
         .drop(columns=["comid"])
-        .replace({'': np.nan})
+        .replace({"": np.nan})
     )
-    largeflows.to_parquet(os.path.join(rapid_output, f"forecastwarnings_{vpu}.parquet"))
+    largeflows.to_parquet(
+        os.path.join(rapid_output, f"forecastwarnings_{vpu}.parquet")
+    )
 
     return
 

@@ -53,10 +53,7 @@ ecflow_entities:
     - name: forecast_prep_task
       variables:
         - PYSCRIPT
-        - ECF_FILES
-        - RAPID_INPUT
-        - RAPID_OUTPUT
-        - RUNOFF_DIR
+        - WORKSPACE
       suite: geoglows_forecast
     - name: esri_table_task
       variables:
@@ -74,7 +71,7 @@ ecflow_entities:
     - name: rapid_forecast_task
       variables:
         - PYSCRIPT
-        - ECF_FILES
+        - WORKSPACE
         - JOB_ID
         - RAPID_EXEC
         - EXEC_DIR
@@ -83,19 +80,19 @@ ecflow_entities:
     - name: init_flows_task
       variables:
         - PYSCRIPT
-        - ECF_FILES
+        - WORKSPACE
         - VPU
       suite: geoglows_forecast
     - name: nc_to_zarr_task
       variables:
         - PYSCRIPT
-        - ECF_FILES
+        - WORKSPACE
         - VPU
       suite: geoglows_forecast
     - name: archive_to_aws_task
       variables:
         - PYSCRIPT
-        - ECF_FILES
+        - WORKSPACE
         - AWS_CONFIG
         - VPU
       suite: geoglows_forecast

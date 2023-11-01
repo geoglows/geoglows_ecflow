@@ -2,7 +2,6 @@ import os
 import argparse
 import datetime
 import json
-from tempfile import TemporaryDirectory
 from glob import glob
 from RAPIDpy import RAPID
 from geoglows_ecflow.resources.helper_functions import (
@@ -15,7 +14,7 @@ from basininflow.inflow import create_inflow_file
 
 
 def rapid_forecast_exec(
-    ecf_files: str,
+    workspace: str,
     job_id: str,
     rapid_executable_location: str,
     mp_execute_directory: str,
@@ -24,13 +23,13 @@ def rapid_forecast_exec(
     """Runs GEOGloWS RAPID forecast.
 
     Args:
-        ecf_files (str): Path to suite home directory.
+        workspace (str): Path to rapid_run.json.
         job_id (str): Job ID.
         rapid_executable_location (str): Path to RAPID executable.
         mp_execute_directory (str): Path intermediate directory for RAPID.
         subprocess_forecast_log_dir (str): Path to RAPID log directory.
     """
-    with open(os.path.join(ecf_files, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         data = json.load(f)
         date = data["date"]
 
@@ -133,9 +132,7 @@ def rapid_forecast_exec(
                 BS_opt_for=True,
             )
         except Exception:
-            rapid_logger.info(
-                "Forcing files not found. Skipping forcing ..."
-            )
+            rapid_logger.info("Forcing files not found. Skipping forcing ...")
             pass
 
         rapid_manager.update_reach_number_data()
@@ -169,74 +166,71 @@ def rapid_forecast_exec(
                 )
                 try:
                     qinit_file = glob(
-                        os.path.join(
-                            rapid_vpu_input_dir, "seasonal_qinit*.nc"
-                        )
+                        os.path.join(rapid_vpu_input_dir, "seasonal_qinit*.nc")
                     )[0]
-                    BS_opt_Qinit = qinit_file and os.path.exists(
-                        qinit_file
-                    )
-                except Exception as e:
-                    print(
-                        f"Failed to initialize from Seasonal Averages."
-                    )
+                    BS_opt_Qinit = qinit_file and os.path.exists(qinit_file)
+                except Exception:
+                    print("Failed to initialize from Seasonal Averages.")
                     print(
                         f"WARNING: {qinit_file} not found. "
                         "Not initializing ..."
                     )
                     qinit_file = ""
 
-        with TemporaryDirectory() as temp_dir:
-            inflow_dir = os.path.join(temp_dir, "inflows")
+        # Create inflow directory
+        inflow_dir = os.path.join(workspace, "inflows")
+        if not os.path.exists(inflow_dir):
+            os.mkdir(inflow_dir)
 
-            create_inflow_file(
-                lsm_data=runoff,
-                input_dir=rapid_vpu_input_dir,
-                inflow_dir=inflow_dir,
-                weight_table=weight_table,
-                comid_lat_lon_z=comid_lat_lon_z_file,
-                cumulative=True,
-                file_label=ens_number,
+        # Create inflow
+        create_inflow_file(
+            lsm_data=runoff,
+            input_dir=rapid_vpu_input_dir,
+            inflow_dir=inflow_dir,
+            weight_table=weight_table,
+            comid_lat_lon_z=comid_lat_lon_z_file,
+            cumulative=True,
+            file_label=ens_number,
+        )
+
+        # Get forecast chronometry
+        interval = 3 if ens_number < 52 else 1
+        duration = 360 if ens_number < 52 else 240
+
+        end_date = (
+            datetime.datetime.strptime(date, "%Y%m%d%H")
+            + datetime.timedelta(hours=duration)
+        ).strftime("%Y%m%d")
+
+        # Get inflow file path
+        # exclude hours from datetime (date[:-2])
+        inflow_file_path = os.path.join(
+            inflow_dir,
+            f"m3_{vpucode}_{date[:-2]}_{end_date}_{ens_number}.nc",
+        )
+
+        try:
+            rapid_manager.update_parameters(
+                ZS_TauR=interval * 60 * 60,
+                ZS_dtR=15 * 60,
+                ZS_TauM=duration * 60 * 60,
+                ZS_dtM=interval * 60 * 60,
+                ZS_dtF=interval * 60 * 60,
+                Vlat_file=inflow_file_path,
+                Qout_file=outflow_file_name,
+                Qinit_file=qinit_file,
+                BS_opt_Qinit=BS_opt_Qinit,
             )
 
-            # Get forecast chronometry
-            interval = 3 if ens_number < 52 else 1
-            duration = 360 if ens_number < 52 else 240
+            # run RAPID
+            rapid_manager.run()
+        except Exception as e:
+            rapid_logger.critical(f"Failed to run RAPID: {e}.")
+            raise
 
-            end_date = (
-                datetime.datetime.strptime(date, "%Y%m%d%H")
-                + datetime.timedelta(hours=duration)
-            ).strftime("%Y%m%d")
-
-            # Get inflow file path
-            # exclude hours from datetime (date[:-2])
-            inflow_file_path = os.path.join(
-                inflow_dir,
-                f"m3_{vpucode}_{date[:-2]}_{end_date}_{ens_number}.nc",
-            )
-
-            try:
-                rapid_manager.update_parameters(
-                    ZS_TauR=interval * 60 * 60,
-                    ZS_dtR=15 * 60,
-                    ZS_TauM=duration * 60 * 60,
-                    ZS_dtM=interval * 60 * 60,
-                    ZS_dtF=interval * 60 * 60,
-                    Vlat_file=inflow_file_path,
-                    Qout_file=outflow_file_name,
-                    Qinit_file=qinit_file,
-                    BS_opt_Qinit=BS_opt_Qinit,
-                )
-
-                # run RAPID
-                rapid_manager.run()
-            except Exception as e:
-                rapid_logger.critical(f"Failed to run RAPID: {e}.")
-                raise
-
-            time_stop_all = datetime.datetime.utcnow()
-            delta_time = time_stop_all - time_start_all
-            rapid_logger.info(f"Total time to compute: {delta_time}")
+        time_stop_all = datetime.datetime.utcnow()
+        delta_time = time_stop_all - time_start_all
+        rapid_logger.info(f"Total time to compute: {delta_time}")
 
         node_rapid_outflow_file = os.path.join(
             execute_directory, os.path.basename(master_rapid_outflow_file)
@@ -249,7 +243,7 @@ def rapid_forecast_exec(
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
-        "ecf_files",
+        "workspace",
         nargs=1,
         help="Path to suite home directory",
     )
@@ -275,14 +269,14 @@ if __name__ == "__main__":
     )
 
     args = argparser.parse_args()
-    ecf_files = args.ecf_files[0]
+    workspace = args.workspace[0]
     job_id = args.job_id[0]
     rapid_executable_location = args.rapid_executable_location[0]
     mp_execute_directory = args.mp_execute_directory[0]
     subprocess_forecast_log_dir = args.subprocess_forecast_log_dir[0]
 
     rapid_forecast_exec(
-        ecf_files,
+        workspace,
         job_id,
         rapid_executable_location,
         mp_execute_directory,

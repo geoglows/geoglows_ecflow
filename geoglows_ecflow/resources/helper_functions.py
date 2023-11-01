@@ -10,9 +10,7 @@ from glob import glob
 
 
 def create_logger(
-    name: str,
-    level: str = 'INFO',
-    log_file: str | None = None
+    name: str, level: str = "INFO", log_file: str | None = None
 ) -> log.Logger:
     # Create a logger
     logger = log.getLogger(name)
@@ -26,7 +24,7 @@ def create_logger(
 
         handler.setLevel(level)
         handler.setFormatter(
-            log.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            log.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         )
 
         # Add the handler to the logger
@@ -36,8 +34,7 @@ def create_logger(
 
 
 def get_date_from_forecast_dir(
-    forecast_dir: str,
-    log: log.Logger = create_logger(__name__)
+    forecast_dir: str, log: log.Logger = create_logger(__name__)
 ) -> str:
     """Gets the datetime from a forecast directory.
 
@@ -53,10 +50,10 @@ def get_date_from_forecast_dir(
     """
     # Get the forecast datetime from the forecast directory
     forecast_date_timestep = os.path.basename(forecast_dir)
-    log.info(f'Forecast timestep {forecast_date_timestep}')
+    log.info(f"Forecast timestep {forecast_date_timestep}")
 
     # Parse forecast datetime
-    date_time_regex = '\d{8}\.\d{2}'
+    date_time_regex = r"\d{8}\.\d{2}"
     try:
         match = re.search(date_time_regex, forecast_date_timestep)
         date_time_str = match.group()
@@ -78,7 +75,7 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     valid_input_directories = []
     # Append to valid_input_directories if directory, skip if not
     for name in os.listdir(input_directory):
-        match = re.search("\d{3}", name)
+        match = re.search(r"\d{3}", name)
         if match and os.path.isdir(os.path.join(input_directory, name)):
             valid_input_directories.append(name)
         else:
@@ -86,13 +83,21 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     return valid_input_directories
 
 
-def find_current_rapid_output(forecast_directory, vpucode):
-    """
-    Finds the most current files output from RAPID
+def find_current_rapid_output(
+    forecast_directory: str, vpu: str | int
+) -> list | None:
+    """Finds output from RAPID for a specific VPU.
+
+    Args:
+        forecast_directory (str): Path to forecast directory.
+        vpu (str | int): VPU code.
+
+    Returns:
+        list | None: List of paths to RAPID output files or None if not found.
     """
     if os.path.exists(forecast_directory):
         basin_files = glob(
-            os.path.join(forecast_directory, f"Qout_{vpucode}_*.nc")
+            os.path.join(forecast_directory, f"Qout_{vpu}_*.nc")
         )
         if len(basin_files) > 0:
             return basin_files
@@ -131,8 +136,11 @@ def case_insensitive_file_search(directory: str, pattern: str) -> str:
     try:
         file_path = os.path.join(
             directory,
-            [filename for filename in os.listdir(directory)
-                if re.search(pattern, filename, re.IGNORECASE)][0]
+            [
+                filename
+                for filename in os.listdir(directory)
+                if re.search(pattern, filename, re.IGNORECASE)
+            ][0],
         )
 
         return file_path

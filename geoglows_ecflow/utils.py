@@ -26,13 +26,13 @@ def load_config(config_path: str) -> dict:
 
 
 def prepare_dir_structure(
-    python_exec: str, workspace: str, entities: dict, suite_logs: str
+    python_exec: str, ecf_home: str, entities: dict, suite_logs: str
 ) -> None:
     """Create the directory structure for the ecflow job.
 
     Args:
         python_exec (str): Path to the python executable.
-        workspace (str): Path to the job workspace.
+        ecf_home (str): Path where the suite file structure will be created.
         entities (dict): Dictionary containing the entities of the ecflow job.
             See config.yml.
         suite_logs (str): Path to the suite logs directory.
@@ -43,7 +43,7 @@ def prepare_dir_structure(
     try:
         for type, ent in entities.items():
             if type == "suite":
-                suite_path = os.path.join(workspace, ent["name"])
+                suite_path = os.path.join(ecf_home, ent["name"])
                 if not os.path.exists(suite_path):
                     os.makedirs(suite_path)
                 if not os.path.exists(suite_logs):
@@ -52,7 +52,7 @@ def prepare_dir_structure(
             elif type == "family":
                 for fam in ent:
                     family_path = os.path.join(
-                        workspace, fam["suite"], fam["name"]
+                        ecf_home, fam["suite"], fam["name"]
                     )
                     if not os.path.exists(family_path):
                         os.makedirs(family_path)
@@ -60,7 +60,7 @@ def prepare_dir_structure(
             elif type == "task":
                 for task in ent:
                     task_path = os.path.join(
-                        workspace, task["suite"], f"{task['name']}.ecf"
+                        ecf_home, task["suite"], f"{task['name']}.ecf"
                     )
 
                     var_list = " ".join(
@@ -76,11 +76,11 @@ def prepare_dir_structure(
         # Copy head.h and tail.h files
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__), "resources", "head.h"),
-            os.path.join(workspace, "head.h"),
+            os.path.join(ecf_home, "head.h"),
         )
         shutil.copyfile(
             os.path.join(os.path.dirname(__file__), "resources", "tail.h"),
-            os.path.join(workspace, "tail.h"),
+            os.path.join(ecf_home, "tail.h"),
         )
     except OSError as e:
         raise OSError(f"Error creating files/directory: {e}")

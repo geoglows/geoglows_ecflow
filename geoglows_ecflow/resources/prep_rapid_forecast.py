@@ -18,7 +18,7 @@ logging.basicConfig(
 
 
 def rapid_forecast_preprocess(
-    ecf_files: str,
+    workspace: str,
     rapid_input: str,
     rapid_output: str,
     runoff_dir: str,
@@ -27,7 +27,7 @@ def rapid_forecast_preprocess(
     """Creates a dict of jobs to run.
 
     Args:
-        ecf_files (str): Path where the suite files will be created.
+        workspace (str): Path where the rapid_run.json will be created.
         rapid_input (str): Path to the rapid input.
         rapid_output (str): Path to the rapid output.
         runoff_dir (str): Path to runoff base directory containing ensemble
@@ -89,7 +89,7 @@ def rapid_forecast_preprocess(
                 "init_flows": initialize_flows,
             }
 
-    with open(os.path.join(ecf_files, "rapid_run.json"), "w") as f:
+    with open(os.path.join(workspace, "rapid_run.json"), "w") as f:
         json.dump(master_dict, f)
 
     logging.info("Completed creating job config json file")
@@ -100,18 +100,12 @@ def rapid_forecast_preprocess(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "ecf_files",
-        nargs=1,
-        help="Path to suite home directory",
-    )
-    parser.add_argument(
         "workspace",
         nargs=1,
         help="Path to workspace directory",
     )
 
     args = parser.parse_args()
-    ecf_files = args.ecf_files[0]
     workspace = args.workspace[0]
 
     rapid_input = os.path.join(workspace, "input")
@@ -119,7 +113,7 @@ if __name__ == "__main__":
     runoff_dir = workspace
 
     rapid_forecast_preprocess(
-        ecf_files=ecf_files,
+        workspace=workspace,
         rapid_input=rapid_input,
         rapid_output=rapid_output,
         runoff_dir=runoff_dir,

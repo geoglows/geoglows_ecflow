@@ -118,10 +118,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "workspace",
         nargs=1,
-        help="Path to the daily workspace directory, named in YYYYMMDDHH format, containing "
-        + "(1) *.runoff.nc IFS forecast files, "
-        + "(2) an output directory of routed discharge netcdfs, "
-        + "(3) symlinks to the rapid inputs and return periods directories",
+        help="Path to the daily workspace directory, named in YYYYMMDDHH "
+        "format, containing (1) *.runoff.nc IFS forecast files, "
+        "(2) an output directory of routed discharge netcdfs, "
+        "(3) symlinks to the rapid inputs and return periods directories",
     )
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     parser.add_argument(
