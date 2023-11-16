@@ -35,6 +35,10 @@ def upload_to_s3(workspace: str, aws_config_file: str):
 
     for forecast_nc in glob.glob(os.path.join(rapid_output_path, f"Qout_*.nc")):
         s3.upload_file(forecast_nc, bucket_uri, f'{date}/{os.path.basename(forecast_nc)}')
+
+    for mapstyletable in glob.glob(os.path.join(rapid_output_path, f"mapstyletable_*.parquet")):
+        s3.upload_file(mapstyletable, bucket_uri, f'{date}/{os.path.basename(mapstyletable)}')
+
     return
 
 
