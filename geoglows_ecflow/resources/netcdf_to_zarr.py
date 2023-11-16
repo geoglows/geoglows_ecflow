@@ -1,17 +1,19 @@
 import argparse
-import os
+import glob
 import json
+import os
+
+import numpy as np
 import pandas as pd
 import xarray as xr
-from glob import glob
 
 
-def netcdf_forecasts_to_zarr(workspace: str, vpu: str) -> None:
-    """Converts the netcdf forecast files to zarr.
+def netcdf_forecasts_to_zarr(workspace: str) -> None:
+    """
+    Converts the netcdf forecast files to zarr.
 
     Args:
         workspace (str): Path to rapid_run.json base directory.
-        vpu (str): VPU code.
     """
     with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         data = json.load(f)
@@ -19,51 +21,47 @@ def netcdf_forecasts_to_zarr(workspace: str, vpu: str) -> None:
         rapid_output = data["output_dir"]
         date = data["date"]
 
-        # Get list of forecast files
-        forecast_nc_list = glob(os.path.join(rapid_output, f"Qout_{vpu}*.nc"))
+    # Get list of forecast files
+    forecast_qout_list = glob.glob(
+        os.path.join(rapid_output, f"Qout_*.nc")
+    )
 
-        # Sort list based on ensemble number
-        forecast_nc_list.sort(
-            key=lambda x: int(os.path.basename(x)[:-3].split("_")[-1])
+    vpu_nums = sorted(
+        set(
+            [os.path.basename(x).split("_")[1] for x in forecast_qout_list]
+        )
+    )
+
+    def _concat_vpu_forecasts(vpu) -> xr.Dataset:
+        return xr.concat(
+            [
+                xr.open_dataset(x).drop_vars(
+                    ["crs", "lat", "lon", "time_bnds", "Qout_err"]
+                )
+                for x in sorted(
+                    glob.glob(
+                        os.path.join(rapid_output, f"Qout_{vpu}_*.nc")
+                    )
+                )
+            ],
+            pd.Index(list(range(1, 53)), name="ensemble"),
+            fill_value=np.nan,
         )
 
-        # Get list of netcdf ensemble datasets
-        ens_list = [
-            xr.open_dataset(forecast_nc)
-            .drop("crs")
-            .drop("Qout_err")
-            .drop("lat")
-            .drop("lon")
-            .drop("time_bnds")
-            for forecast_nc in forecast_nc_list
-        ]
+    all_vpu_ds = xr.combine_nested(
+        [_concat_vpu_forecasts(vpu) for vpu in vpu_nums],
+        concat_dim="rivid",
+        fill_value=np.nan,
+    )
 
-        # Concatenate all ensemble datasets
-        # ens_list is sorted by ensemble number (from 1 to 52)
-        combined_ens_dataset = xr.concat(
-            ens_list, pd.Index(list(range(1, 53)), name="ensemble")
+    (
+        all_vpu_ds.chunk(
+            {"time": -1, "rivid": "auto", "ensemble": -1}
+        ).to_zarr(
+            os.path.join(rapid_output, f"Qout_{date}.zarr"),
+            consolidated=True,
         )
-
-        # Set 'Qout' fillvalue
-        # todo figure out how to set fill value better
-        combined_ens_dataset["Qout"] = combined_ens_dataset["Qout"].where(
-            combined_ens_dataset["Qout"].notnull(), other=-9999
-        )
-
-        # Chunk ensemble dataset along time dimension
-        chunk_sizes = {
-            "time": combined_ens_dataset.variables["time"].shape[0],
-            "rivid": "auto",
-        }
-        combined_ens_dataset = combined_ens_dataset.chunk(chunk_sizes)
-
-        # Create zarr output path
-        zarr_output_path = os.path.join(
-            rapid_output, f"Qout_{vpu}_{date}.zarr"
-        )
-
-        # Write ensemble dataset to zarr
-        combined_ens_dataset.to_zarr(zarr_output_path, mode="w")
+    )
 
 
 if __name__ == "__main__":
@@ -74,14 +72,7 @@ if __name__ == "__main__":
         nargs=1,
         help="Path to the suite home directory.",
     )
-    parser.add_argument(
-        "vpu",
-        nargs=1,
-        help="VPU code.",
-    )
-
     args = parser.parse_args()
     workspace = args.workspace[0]
-    vpu = args.vpu[0]
 
-    netcdf_forecasts_to_zarr(workspace, vpu)
+    netcdf_forecasts_to_zarr(workspace)
