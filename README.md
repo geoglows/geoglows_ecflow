@@ -74,8 +74,6 @@ ecflow_entities:
         - WORKSPACE
         - JOB_ID
         - RAPID_EXEC
-        - EXEC_DIR
-        - SUBPROCESS_DIR
       suite: geoglows_forecast
     - name: init_flows_task
       variables:

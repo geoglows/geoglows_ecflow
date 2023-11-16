@@ -37,14 +37,12 @@ def postprocess_vpu_forecast_directory(
             if "_52." not in x
         ]
     )
-    output_filename = os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
-    ncesstr = f"{nces_exec} -O --op_typ=avg -o {output_filename}"
+    nces_output_filename = os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+    ncesstr = f"{nces_exec} -O --op_typ=avg -o {nces_output_filename}"
     sp.call(f"{ncesstr} {findstr}", shell=True)
 
     # read the date and COMID lists from one of the netcdfs
-    with xr.open_dataset(
-        glob.glob(os.path.join(rapid_output, f"nces_avg_{vpu}.nc"))[0]
-    ) as ds:
+    with xr.open_dataset(nces_output_filename) as ds:
         comids = ds["rivid"][:].values
         dates = pd.to_datetime(ds["time"][:].values)
         mean_flows = ds["Qout"][:].values.round(2)
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     parser.add_argument(
         "ncesexec",
-        nargs=1,
+        nargs="?",
         help="Path to the nces executable or recognized cli command if "
         "installed in environment. Should be 'nces' if installed in "
         "environment using conda",
@@ -137,7 +135,6 @@ if __name__ == "__main__":
     rapid_output = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
     vpu = args.vpu[0]
-    nces = args.ncesexec[0]
 
     logging.basicConfig(
         level=logging.INFO,
@@ -146,4 +143,8 @@ if __name__ == "__main__":
         stream=sys.stdout,
     )
 
-    postprocess_vpu_forecast_directory(rapid_output, returnperiods, vpu, nces)
+    params = [rapid_output, returnperiods, vpu]
+    if args.ncesexec:
+        params.append(args.ncesexec)
+
+    postprocess_vpu_forecast_directory(*params)

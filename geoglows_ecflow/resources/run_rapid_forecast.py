@@ -29,6 +29,11 @@ def rapid_forecast_exec(
         mp_execute_directory (str): Path intermediate directory for RAPID.
         subprocess_forecast_log_dir (str): Path to RAPID log directory.
     """
+    if not os.path.exists(mp_execute_directory):
+        os.mkdir(mp_execute_directory)
+    if not os.path.exists(subprocess_forecast_log_dir):
+        os.mkdir(subprocess_forecast_log_dir)
+
     with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
         data = json.load(f)
         date = data["date"]
@@ -197,16 +202,9 @@ def rapid_forecast_exec(
         interval = 3 if ens_number < 52 else 1
         duration = 360 if ens_number < 52 else 240
 
-        end_date = (
-            datetime.datetime.strptime(date, "%Y%m%d%H")
-            + datetime.timedelta(hours=duration)
-        ).strftime("%Y%m%d")
-
         # Get inflow file path
-        # exclude hours from datetime (date[:-2])
-        inflow_file_path = os.path.join(
-            inflow_dir,
-            f"m3_{vpucode}_{date[:-2]}_{end_date}_{ens_number}.nc",
+        inflow_file_path = case_insensitive_file_search(
+            inflow_dir, rf"m3_{vpucode}.*{ens_number}\.nc"
         )
 
         try:
@@ -257,23 +255,13 @@ if __name__ == "__main__":
         nargs=1,
         help="Path to RAPID executable",
     )
-    argparser.add_argument(
-        "mp_execute_directory",
-        nargs=1,
-        help="Path intermediate directory for RAPID",
-    )
-    argparser.add_argument(
-        "subprocess_forecast_log_dir",
-        nargs=1,
-        help="Path to RAPID log directory",
-    )
 
     args = argparser.parse_args()
     workspace = args.workspace[0]
     job_id = args.job_id[0]
     rapid_executable_location = args.rapid_executable_location[0]
-    mp_execute_directory = args.mp_execute_directory[0]
-    subprocess_forecast_log_dir = args.subprocess_forecast_log_dir[0]
+    mp_execute_directory = os.path.join(workspace, "execute")
+    subprocess_forecast_log_dir = os.path.join(workspace, "subprocess")
 
     rapid_forecast_exec(
         workspace,
