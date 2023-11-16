@@ -1,46 +1,41 @@
-import os
 import argparse
+import glob
 import json
-import yaml
+import os
+
 import boto3
+import yaml
 
 
-def upload_to_s3(workspace: str, aws_config_file: str, vpu: str):
-    """Uploads GEOGloWS forecast output to AWS.
+def upload_to_s3(workspace: str, aws_config_file: str):
+    """
+    Uploads GEOGloWS forecast output to AWS.
 
     Args:
         workspace (str): Path to rapid_run.json base directory.
         aws_config_file (str): Path to AWS config file.
-        vpu (str): VPU code.
     """
     with open(aws_config_file, "r") as f:
         config = yaml.safe_load(f)
         ACCESS_KEY_ID = config["aws_access_key_id"]
         SECRET_ACCESS_KEY = config["aws_secret_access_key"]
 
-        # Create an S3 client
-        s3 = boto3.client(
-            "s3",
-            aws_access_key_id=ACCESS_KEY_ID,
-            aws_secret_access_key=SECRET_ACCESS_KEY,
-        )
-
     with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
-        # Get data
         data = json.load(f)
         date = data["date"]
         rapid_output_path = data["output_dir"]
+        bucket_uri = data["bucket_forecast_archive"]
 
-        # Upload multiple files to S3
-        bucket_name = config["bucket_name"]
-        base_name = f"Qout_{vpu}_{date}.zarr"
-        zarr_file = os.path.join(rapid_output_path, base_name)
+    # Create an S3 client
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=ACCESS_KEY_ID,
+        aws_secret_access_key=SECRET_ACCESS_KEY,
+    )
 
-        for root, _, files in os.walk(zarr_file):
-            for file_name in files:
-                file_path = os.path.join(root, file_name)
-                object_key = f"{base_name}{file_path.split(base_name)[1]}"
-                s3.upload_file(file_path, bucket_name, object_key)
+    for forecast_nc in glob.glob(os.path.join(rapid_output_path, f"Qout_*.nc")):
+        s3.upload_file(forecast_nc, bucket_uri, f'{date}/{os.path.basename(forecast_nc)}')
+    return
 
 
 if __name__ == "__main__":
