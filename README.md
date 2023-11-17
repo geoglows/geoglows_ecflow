@@ -94,7 +94,6 @@ ecflow_entities:
         - PYSCRIPT
         - WORKSPACE
         - AWS_CONFIG
-        - VPU
       suite: geoglows_forecast
 
 # rapid variables
@@ -117,7 +116,7 @@ aws_access_key_id: AWS_ACCESS_KEY_ID
 aws_secret_access_key: AWS_SECRET_ACCESS_KEY
 
 # aws s3 bucket
-bucket_name: S3_BUCKET_NAME
+bucket_forecast_archive: S3_BUCKET_NAME
 ```
 
 ## Custom ecflow server start (local_ecflow_start.sh)
