@@ -100,13 +100,20 @@ def postprocess_vpu_forecast_directory(
         mean_flow_df = mean_flow_df.merge(
             df, left_index=True, right_index=True
         )
+
+    maptable_outdir = os.path.join(rapid_output, "map_style_tables")
+    if not os.path.exists(maptable_outdir):
+        os.makedirs(maptable_outdir)
+
     mean_flow_df.index.names = ["timestamp", "comid"]
     mean_flow_df = mean_flow_df.reset_index()
     mean_flow_df["mean"] = mean_flow_df["mean"].round(1)
     mean_flow_df.loc[mean_flow_df["mean"] < 0, "mean"] = 0
     mean_flow_df["thickness"] = mean_flow_df["thickness"].astype(int)
     mean_flow_df["ret_per"] = mean_flow_df["ret_per"].astype(int)
-    mean_flow_df.to_parquet(os.path.join(rapid_output, style_table_file_name))
+    mean_flow_df.to_parquet(
+        os.path.join(maptable_outdir, style_table_file_name)
+    )
     return
 
 

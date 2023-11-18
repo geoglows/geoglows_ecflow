@@ -11,6 +11,7 @@ dependencies:
   - fastparquet
   - xarray
   - netcdf4
+  - zarr
   - boto3
   - pip:
     - basininflow @ git+https://pypi.org/project/basininflow/

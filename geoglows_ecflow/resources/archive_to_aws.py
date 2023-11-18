@@ -44,12 +44,12 @@ def upload_to_s3(workspace: str, aws_config_file: str):
         )
 
     for mapstyletable in glob.glob(
-        os.path.join(rapid_output_path, f"mapstyletable_*.parquet")
+        os.path.join(workspace, f"mapstyletable_*.tar.gz")
     ):
         s3.upload_file(
             mapstyletable,
             mapstyletable_bucket_uri,
-            f"{date}/{os.path.basename(mapstyletable)}",
+            os.path.basename(mapstyletable),
         )
 
     return

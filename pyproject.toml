@@ -13,6 +13,7 @@ dependencies = [
     "pandas>=2.1.0",
     "xarray>=2023.8.0",
     "fastparquet>=2023.8.0",
+    "zarr>=2.16.1",
     "boto3>=1.28.65",
     "basininflow>=0.9.0",
     # "RAPIDpy>=2.6.0",  # Install netcdf_qinit branch from BYU Hydroinformatics GitHub
