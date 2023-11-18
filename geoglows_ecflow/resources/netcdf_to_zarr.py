@@ -33,6 +33,11 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     )
 
     def _concat_vpu_forecasts(vpu) -> xr.Dataset:
+        ens_list = sorted(list(set(map(
+            lambda x: int(x.split("_")[-1].split(".")[0]),
+            forecast_qout_list
+        ))))
+
         return xr.concat(
             [
                 xr.open_dataset(x).drop_vars(
@@ -44,7 +49,7 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
                     )
                 )
             ],
-            pd.Index(list(range(1, 53)), name="ensemble"),
+            pd.Index(ens_list, name="ensemble"),
             fill_value=np.nan,
         )
 

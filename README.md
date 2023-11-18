@@ -74,8 +74,6 @@ ecflow_entities:
         - WORKSPACE
         - JOB_ID
         - RAPID_EXEC
-        - EXEC_DIR
-        - SUBPROCESS_DIR
       suite: geoglows_forecast
     - name: init_flows_task
       variables:
@@ -117,6 +115,7 @@ aws_secret_access_key: AWS_SECRET_ACCESS_KEY
 
 # aws s3 bucket
 bucket_forecast_archive: S3_BUCKET_NAME
+bucket_maptable_archive: S3_BUCKET_NAME
 ```
 
 ## Custom ecflow server start (local_ecflow_start.sh)
