@@ -194,6 +194,7 @@ def create_day_one_family(
     family_name: str,
     task_name: str,
     vpu_list: list[str],
+    output_dir: str,
     trigger: str,
     is_local: bool = False,
 ) -> Family:
@@ -203,7 +204,7 @@ def create_day_one_family(
         family_name (str): Name of the family group.
         task_name (str): Name of the task.
         vpu_list (list[str]): List of VPU codes.
-        nces_exec (str): Path to the nces executable.
+        output_dir (str): Path to forecast records output directory.
         trigger (str): Trigger that will start this family.
         is_local (bool, optional): True if the job is run locally.
 
@@ -222,6 +223,7 @@ def create_day_one_family(
         # Create init flows tasks
         task = Task(f"{task_name}_{vpu}")
         task.add_variable("VPU", str(vpu))
+        task.add_variable("OUTPUT_DIR", output_dir)
         if is_local:
             if i > 0:
                 prev_vpu = vpu_list[i - 1]
@@ -311,6 +313,7 @@ def create(config_path: str) -> None:
     rapid_exec = config["rapid_exec"]
     rapid_exec_dir = config["rapid_exec_dir"]
     rapid_subprocess_dir = config["rapid_subprocess_dir"]
+    forecast_records_dir = config["forecast_records_dir"]
     nces_exec = config["nces_exec"]
     aws_config = config["aws_config"]
 
@@ -410,6 +413,7 @@ def create(config_path: str) -> None:
         day_one_family_name,
         day_one_task_name,
         vpu_list,
+        forecast_records_dir,
         init_flows_family_name,
         is_local=local_run,
     )

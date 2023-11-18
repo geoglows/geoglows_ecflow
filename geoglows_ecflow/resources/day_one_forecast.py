@@ -312,6 +312,11 @@ if __name__ == "__main__":
         nargs=1,
         help="VPU number",
     )
+    parser.add_argument(
+        "output_dir",
+        nargs=1,
+        help="path to the forecast records output directory",
+    )
 
     args = parser.parse_args()
     workspace = args.workspace[0]
@@ -319,7 +324,7 @@ if __name__ == "__main__":
     rapid_input = os.path.join(workspace, "input")
     rapid_output = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
-    forecast_records = os.path.join(workspace, "forecast_records")
+    forecast_records = args.output_dir[0]
     rapid_output = os.path.join(workspace, "output")
 
     # start logging
