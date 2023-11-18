@@ -67,7 +67,7 @@ ecflow_entities:
         - PYSCRIPT
         - WORKSPACE
         - VPU
-        - OUPUT_DIR
+        - OUTPUT_DIR
       suite: geoglows_forecast
     - name: rapid_forecast_task
       variables:
