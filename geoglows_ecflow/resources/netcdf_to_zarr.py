@@ -22,36 +22,32 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
         date = data["date"]
 
     # Get list of forecast files
-    forecast_qout_list = glob.glob(
-        os.path.join(rapid_output, f"Qout_*.nc")
-    )
+    forecast_qout_list = glob.glob(os.path.join(rapid_output, f"Qout_*.nc"))
 
     vpu_nums = sorted(
-        set(
-            [os.path.basename(x).split("_")[1] for x in forecast_qout_list]
-        )
+        set([os.path.basename(x).split("_")[1] for x in forecast_qout_list])
     )
 
-    def _concat_vpu_forecasts(vpu) -> xr.Dataset:
-        ens_list = sorted(list(set(map(
-            lambda x: int(x.split("_")[-1].split(".")[0]),
-            forecast_qout_list
-        ))))
+    def _sort_key(x):
+        return int(os.path.basename(x).split("_")[-1].split(".")[0])
 
-        return xr.concat(
+    def _concat_vpu_forecasts(vpu) -> xr.Dataset:
+        qout_list = glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
+        sorted_qout_list = sorted(qout_list, key=_sort_key)
+        ens_list = [_sort_key(x) for x in sorted_qout_list]
+
+        vpu_ds = xr.concat(
             [
                 xr.open_dataset(x).drop_vars(
                     ["crs", "lat", "lon", "time_bnds", "Qout_err"]
                 )
-                for x in sorted(
-                    glob.glob(
-                        os.path.join(rapid_output, f"Qout_{vpu}_*.nc")
-                    )
-                )
+                for x in sorted(sorted_qout_list)
             ],
             pd.Index(ens_list, name="ensemble"),
             fill_value=np.nan,
         )
+
+        return vpu_ds
 
     all_vpu_ds = xr.combine_nested(
         [_concat_vpu_forecasts(vpu) for vpu in vpu_nums],
