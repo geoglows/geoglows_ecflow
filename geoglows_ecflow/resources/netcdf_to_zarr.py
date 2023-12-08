@@ -41,7 +41,7 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
                 xr.open_dataset(x).drop_vars(
                     ["crs", "lat", "lon", "time_bnds", "Qout_err"]
                 )
-                for x in sorted(sorted_qout_list)
+                for x in sorted_qout_list
             ],
             pd.Index(ens_list, name="ensemble"),
             fill_value=np.nan,

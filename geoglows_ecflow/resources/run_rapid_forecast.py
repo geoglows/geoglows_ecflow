@@ -9,7 +9,7 @@ from geoglows_ecflow.resources.helper_functions import (
     get_ensemble_number_from_forecast,
     case_insensitive_file_search,
 )
-from shutil import move, rmtree
+from shutil import move
 from basininflow.inflow import create_inflow_file
 
 
@@ -235,7 +235,6 @@ def rapid_forecast_exec(
         )
 
         move(node_rapid_outflow_file, master_rapid_outflow_file)
-        rmtree(execute_directory)
 
 
 if __name__ == "__main__":
