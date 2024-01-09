@@ -12,7 +12,6 @@ def concat_warnings(workdir: str) -> None:
 
     Args:
         workdir: Path to daily forecast workspace
-        date: Date of forecast in YYYYMMDDHH format
 
     Returns:
         None
