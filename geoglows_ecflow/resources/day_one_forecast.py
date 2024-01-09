@@ -51,7 +51,7 @@ def check_for_return_period_flow(
 
     # then compare the timeseries to the return period thresholds
     if max_flow >= r2:
-        date_r2 = get_time_of_first_exceedence(forecasted_flows_df, r2)
+        date_r2 = get_time_of_first_exceedance(forecasted_flows_df, r2)
     # if the flow is not larger than the smallest return period, return the
     # dataframe without appending anything
     else:
@@ -59,15 +59,15 @@ def check_for_return_period_flow(
 
     # check the rest of the return period flow levels
     if max_flow >= r5:
-        date_r5 = get_time_of_first_exceedence(forecasted_flows_df, r5)
+        date_r5 = get_time_of_first_exceedance(forecasted_flows_df, r5)
     if max_flow >= r10:
-        date_r10 = get_time_of_first_exceedence(forecasted_flows_df, r10)
+        date_r10 = get_time_of_first_exceedance(forecasted_flows_df, r10)
     if max_flow >= r25:
-        date_r25 = get_time_of_first_exceedence(forecasted_flows_df, r25)
+        date_r25 = get_time_of_first_exceedance(forecasted_flows_df, r25)
     if max_flow >= r50:
-        date_r50 = get_time_of_first_exceedence(forecasted_flows_df, r50)
+        date_r50 = get_time_of_first_exceedance(forecasted_flows_df, r50)
     if max_flow >= r100:
-        date_r100 = get_time_of_first_exceedence(forecasted_flows_df, r100)
+        date_r100 = get_time_of_first_exceedance(forecasted_flows_df, r100)
 
     new_row = pd.DataFrame(
         {
@@ -89,7 +89,7 @@ def check_for_return_period_flow(
     return largeflows_df
 
 
-def get_time_of_first_exceedence(forecasted_flows_df, flow):
+def get_time_of_first_exceedance(forecasted_flows_df, flow):
     # replace the flows that are too small (don't exceed the return period)
     forecasted_flows_df[forecasted_flows_df.means < flow] = np.nan
     daily_flows = forecasted_flows_df.dropna()
