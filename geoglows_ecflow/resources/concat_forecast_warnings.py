@@ -32,7 +32,7 @@ def concat_warnings(workdir: str) -> None:
     (
         pd.concat([pd.read_parquet(x) for x in warnings_files])
         .reset_index(drop=True)
-        .to_parquet(os.path.join(workdir, f"forecastwarnings_{date}.parquet"))
+        .to_parquet(output_file)
     )
     return
 
