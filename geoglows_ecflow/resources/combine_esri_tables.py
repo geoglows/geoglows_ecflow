@@ -57,7 +57,7 @@ if __name__ == "__main__":
     workspace = args.workspace[0]
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s %(message)s",
         stream=sys.stdout,
     )
