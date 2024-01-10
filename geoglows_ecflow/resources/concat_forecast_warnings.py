@@ -8,7 +8,8 @@ import argparse
 
 def concat_warnings(workdir: str) -> None:
     """
-    Concatenates the warnings from each VPU into 1 parquet of all warnings data
+    Concatenates the warnings from each VPU into 1 parquet of all warnings
+        data.
 
     Args:
         workdir: Path to daily forecast workspace
@@ -17,15 +18,17 @@ def concat_warnings(workdir: str) -> None:
         None
     """
     date = os.path.basename(workdir)
-    warnings_files = glob.glob(os.path.join(workdir, "output", "*", "forecastwarnings_*.parquet"))
+    warnings_files = glob.glob(
+        os.path.join(workdir, "output", "forecastwarnings_*.parquet")
+    )
     output_file = os.path.join(workdir, f"forecastwarnings_{date}.parquet")
 
-    logging.info(f"Found {len(warnings_files)} warnings files")
     if len(warnings_files) == 0:
         logging.info("No warnings files found")
         logging.info("Skipping Warnings File Concatenation")
         return
 
+    logging.info(f"Found {len(warnings_files)} warnings files")
     logging.info(f"Concatenating warnings files to {output_file}")
 
     (
@@ -33,7 +36,6 @@ def concat_warnings(workdir: str) -> None:
         .reset_index(drop=True)
         .to_parquet(output_file)
     )
-    return
 
 
 if __name__ == "__main__":
@@ -56,4 +58,3 @@ if __name__ == "__main__":
     )
 
     concat_warnings(workspace)
-    exit(0)
