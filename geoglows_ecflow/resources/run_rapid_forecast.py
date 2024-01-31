@@ -204,7 +204,7 @@ def rapid_forecast_exec(
 
         # Get inflow file path
         inflow_file_path = case_insensitive_file_search(
-            inflow_dir, rf"m3_{vpucode}.*{ens_number}\.nc"
+            inflow_dir, rf"m3_{vpucode}.*_{ens_number}\.nc"
         )
 
         try:
