@@ -1,6 +1,6 @@
 [project]
 name = "geoglows_ecflow"
-version = "2.0.0"
+version = "2.0.1"
 description = "ECFLOW RAPID workflow for GEOGloWS"
 authors = [
     { name = "Michael Souffront", email = "msouffront@aquaveo.com" },
