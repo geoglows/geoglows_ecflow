@@ -150,7 +150,7 @@ def postprocess_vpu(
     ]
 
     # get the list of comids
-    large_list = large_vpu_streams_df["TDXHydroLinkNo"].tolist()
+    large_list = large_vpu_streams_df["LINKNO"].tolist()
 
     # store the first day flows in a huge array
     logging.info("  beginning to iterate over the comids")
@@ -178,7 +178,7 @@ def postprocess_vpu(
         # the return periods summary csv
         if comid in large_list:
             order = large_vpu_streams_df[
-                large_vpu_streams_df["TDXHydroLinkNo"] == comid
+                large_vpu_streams_df["LINKNO"] == comid
             ]["strmOrder"].values
             rp_data = return_period_data[return_period_data.index == comid]
             largeflows = check_for_return_period_flow(
@@ -197,10 +197,10 @@ def postprocess_vpu(
 
     largeflows = (
         largeflows.merge(
-            streams_df[["lat", "lon", "TDXHydroLinkNo"]],
+            streams_df[["lat", "lon", "LINKNO"]],
             how="inner",
             left_on="comid",
-            right_on="TDXHydroLinkNo",
+            right_on="LINKNO",
         )
         .drop(columns=["comid"])
         .replace({"": np.nan})
