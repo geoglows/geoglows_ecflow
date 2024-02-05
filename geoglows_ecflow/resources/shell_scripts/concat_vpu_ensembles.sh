@@ -22,6 +22,10 @@ done < <(ls -1 Qout_*.nc | awk -F_ '{print $2}' | sort -u)
 echo "Found ${#vpu_numbers[@]} VPUs"
 
 for vpu_number in "${vpu_numbers[@]}"; do
+  # calculate the ensemble mean
+  echo "Calculating ensemble mean for VPU number $vpu_number"
+  nces $(ls -1 Qout_${vpu_number}_*.nc | grep -v Qout_${vpu_number}_52.nc | sort -V) -O --op_typ=avg -o "nces_avg_${vpu_number}".nc
+
   output_file="Qout_${vpu_number}.nc"
 
   # concatenate along a new dimension which is called record by default
