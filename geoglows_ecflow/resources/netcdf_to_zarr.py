@@ -38,7 +38,7 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     with dask.config.set(**{
         'array.slicing.split_large_chunks': False,
         # set the max chunk size to 5MB
-        'array.chunk-size': '10MB',
+        'array.chunk-size': '40MB',
         # use the threads scheduler
         'scheduler': 'threads',
         # set the maximum memory target usage to 90% of total memory
