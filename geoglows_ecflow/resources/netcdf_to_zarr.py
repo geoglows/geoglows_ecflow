@@ -3,6 +3,7 @@ import glob
 import json
 import logging
 import os
+import shutil
 import sys
 
 import dask
@@ -35,6 +36,11 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
 
     qout_1_51_files = sorted([os.path.join(rapid_output, f"Qout_{vpu}.nc") for vpu in vpu_nums])
     qout_52_files = sorted(glob.glob(os.path.join(rapid_output, f"Qout_*_52.nc")))
+    zarr_file_path = os.path.join(rapid_output, f"Qout_{date}.zarr")
+
+    if os.path.exists(zarr_file_path):
+        shutil.rmtree(zarr_file_path)
+
     with dask.config.set(**{
         'array.slicing.split_large_chunks': False,
         # set the max chunk size to 5MB
@@ -42,14 +48,14 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
         # use the threads scheduler
         'scheduler': 'threads',
         # set the maximum memory target usage to 90% of total memory
-        'distributed.worker.memory.target': 0.90,
+        'distributed.worker.memory.target': 0.80,
         # do not allow spilling to disk
         'distributed.worker.memory.spill': False,
         # specify the amount of resources to allocate to dask workers
-        # 'distributed.worker.resources': {
-        #     'memory': 2e9,  # 1e9=1GB, this is the amount per worker
-        #     'cpu': os.cpu_count(),  # num CPU per worker
-        # }
+        'distributed.worker.resources': {
+            'memory': 3e9,  # 1e9=1GB, this is the amount per worker
+            'cpu': os.cpu_count(),  # num CPU per worker
+        }
     }):
         logging.info("Opening ensembles 1-51 datasets")
         with xr.open_mfdataset(qout_1_51_files, combine="nested", concat_dim="rivid") as ds151:
@@ -76,7 +82,7 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
                         "ensemble": -1
                     })
                     .to_zarr(
-                        os.path.join(rapid_output, f"Qout_{date}.zarr"),
+                        zarr_file_path,
                         consolidated=True,
                         encoding=encoding,
                     )

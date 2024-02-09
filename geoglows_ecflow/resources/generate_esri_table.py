@@ -94,9 +94,7 @@ def postprocess_vpu_forecast_directory(
     mean_flow_df.loc[mean_flow_df["mean"] < 0, "mean"] = 0
     mean_flow_df["thickness"] = mean_flow_df["thickness"].astype(int)
     mean_flow_df["ret_per"] = mean_flow_df["ret_per"].astype(int)
-    mean_flow_df.to_parquet(
-        os.path.join(maptable_outdir, style_table_file_name)
-    )
+    mean_flow_df.to_parquet(os.path.join(maptable_outdir, style_table_file_name))
     return
 
 
