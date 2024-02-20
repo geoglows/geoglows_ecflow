@@ -9,9 +9,9 @@ import xarray as xr
 
 
 def postprocess_vpu_forecast_directory(
-        rapid_output: str,
-        returnperiods: str,
-        vpu: int or str,
+    rapid_output: str,
+    returnperiods: str,
+    vpu: int or str,
 ):
     # creates file name for the csv file
     date_string = os.path.basename(
@@ -35,7 +35,7 @@ def postprocess_vpu_forecast_directory(
     # limit both dataframes to the first 10 days
     mean_flow_df = mean_flow_df[
         mean_flow_df.index <= mean_flow_df.index[0] + pd.Timedelta(days=10)
-        ]
+    ]
 
     # creating pandas dataframe with return periods
     rp_path = os.path.join(returnperiods, f"returnperiods_{vpu}.nc")
@@ -94,7 +94,9 @@ def postprocess_vpu_forecast_directory(
     mean_flow_df.loc[mean_flow_df["mean"] < 0, "mean"] = 0
     mean_flow_df["thickness"] = mean_flow_df["thickness"].astype(int)
     mean_flow_df["ret_per"] = mean_flow_df["ret_per"].astype(int)
-    mean_flow_df.to_parquet(os.path.join(maptable_outdir, style_table_file_name))
+    mean_flow_df.to_parquet(
+        os.path.join(maptable_outdir, style_table_file_name)
+    )
     return
 
 
@@ -105,9 +107,9 @@ if __name__ == "__main__":
         "workspace",
         nargs=1,
         help="Path to the daily workspace directory, named in YYYYMMDDHH "
-             "format, containing (1) *.runoff.nc IFS forecast files, "
-             "(2) an output directory of routed discharge netcdfs, "
-             "(3) symlinks to the rapid inputs and return periods directories",
+        "format, containing (1) *.runoff.nc IFS forecast files, "
+        "(2) an output directory of routed discharge netcdfs, "
+        "(3) symlinks to the rapid inputs and return periods directories",
     )
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     args = parser.parse_args()
