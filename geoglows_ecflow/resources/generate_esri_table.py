@@ -1,20 +1,17 @@
 import argparse
-import glob
 import logging
 import os
-import subprocess as sp
+import sys
+
 import netCDF4 as nc
 import pandas as pd
 import xarray as xr
-
-import sys
 
 
 def postprocess_vpu_forecast_directory(
     rapid_output: str,
     returnperiods: str,
     vpu: int or str,
-    nces_exec: str = "nces",
 ):
     # creates file name for the csv file
     date_string = os.path.basename(
@@ -26,21 +23,7 @@ def postprocess_vpu_forecast_directory(
         return
     logging.info(f"Creating style table: {style_table_file_name}")
 
-    # calls NCO's nces function to calculate ensemble statistics for the max,
-    # mean, and min Qout. * ens([1 - 9] | [1 - 4][0 - 9] | 5[0 - 1])\.nc
-    logging.info("Calling NCES statistics")
-
-    findstr = " ".join(
-        [
-            x
-            for x in glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
-            if "_52." not in x
-        ]
-    )
     nces_output_filename = os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
-    ncesstr = f"{nces_exec} -O --op_typ=avg -o {nces_output_filename}"
-    sp.call(f"{ncesstr} {findstr}", shell=True)
-
     # read the date and COMID lists from one of the netcdfs
     with xr.open_dataset(nces_output_filename) as ds:
         comids = ds["rivid"][:].values
@@ -129,14 +112,6 @@ if __name__ == "__main__":
         "(3) symlinks to the rapid inputs and return periods directories",
     )
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
-    parser.add_argument(
-        "ncesexec",
-        nargs="?",
-        help="Path to the nces executable or recognized cli command if "
-        "installed in environment. Should be 'nces' if installed in "
-        "environment using conda",
-    )
-
     args = parser.parse_args()
     workspace = args.workspace[0]
     rapid_output = os.path.join(workspace, "output")
@@ -151,7 +126,5 @@ if __name__ == "__main__":
     )
 
     params = [rapid_output, returnperiods, vpu]
-    if args.ncesexec:
-        params.append(args.ncesexec)
 
     postprocess_vpu_forecast_directory(*params)

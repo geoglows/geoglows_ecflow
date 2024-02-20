@@ -156,7 +156,7 @@ def rapid_forecast_exec(
                 past_date = (
                     datetime.datetime.strptime(date, "%Y%m%d%H")
                     - datetime.timedelta(hours=day)
-                ).strftime("%Y%m%dt%H")
+                ).strftime("%Y%m%d%H")
                 qinit_file = os.path.join(
                     rapid_vpu_input_dir, f"Qinit_{past_date}.nc"
                 )

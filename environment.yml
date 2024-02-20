@@ -7,6 +7,7 @@ dependencies:
   - nco
   - pyyaml
   - numpy
+  - dask
   - pandas
   - fastparquet
   - xarray
@@ -15,4 +16,4 @@ dependencies:
   - boto3
   - pip:
     - basininflow @ git+https://pypi.org/project/basininflow/
-    - RAPIDpy @ git+https://github.com/BYU-Hydroinformatics/RAPIDpy/@netcdf_qinit
+    - RAPIDpy @ git+https://github.com/BYU-Hydroinformatics/RAPIDpy/
