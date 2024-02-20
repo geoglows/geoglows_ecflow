@@ -142,10 +142,10 @@ class StreamNetworkInitializer(object):
                         )
                         continue
                     # organize the data
-                    for comid_index, comid in enumerate(reordered_comid_list):
-                        reach_prediciton_array[comid_index][
-                            file_index
-                        ] = data_values_2d_array[comid_index]
+                    for comid_index, _ in enumerate(reordered_comid_list):
+                        reach_prediciton_array[comid_index][file_index] = (
+                            data_values_2d_array[comid_index]
+                        )
                 except Exception as e:
                     print(e)
                     # pass
@@ -194,13 +194,13 @@ class StreamNetworkInitializer(object):
             ):
                 try:
                     if stream_segment.station_flow is not None:
-                        init_flows_array[
-                            stream_index
-                        ] = stream_segment.station_flow
+                        init_flows_array[stream_index] = (
+                            stream_segment.station_flow
+                        )
                     else:
-                        init_flows_array[
-                            stream_index
-                        ] = stream_segment.init_flow
+                        init_flows_array[stream_index] = (
+                            stream_segment.init_flow
+                        )
                 except IndexError:
                     log.warning("Stream index not found.")
             with nc.Dataset(

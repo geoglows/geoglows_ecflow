@@ -34,18 +34,22 @@ def upload_to_s3(workspace: str, aws_config_file: str):
         aws_secret_access_key=SECRET_ACCESS_KEY,
     )
 
-    for index, forecast_nc in sorted(glob.glob(os.path.join(rapid_output_path, f"Qout_*.nc"))):
+    for forecast_nc in sorted(
+        glob.glob(os.path.join(rapid_output_path, f"Qout_*.nc"))
+    ):
         s3.upload_file(
             forecast_nc,
             forecast_bucket_uri,
             f"{date}/{os.path.basename(forecast_nc)}",
         )
 
-    for mapstyletable in sorted(glob.glob(os.path.join(workspace, f"mapstyletable_*"))):
+    for mapstyletable in sorted(
+        glob.glob(os.path.join(workspace, f"mapstyletable_*"))
+    ):
         s3.upload_file(
             mapstyletable,
             mapstyletable_bucket_uri,
-            f'{date}/{os.path.basename(mapstyletable)}',
+            f"{date}/{os.path.basename(mapstyletable)}",
         )
 
     return

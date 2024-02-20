@@ -1,6 +1,6 @@
 [project]
 name = "geoglows_ecflow"
-version = "2.2.0"
+version = "2.2.1"
 description = "ECFLOW RAPID workflow for GEOGloWS"
 authors = [
     { name = "Michael Souffront", email = "msouffront@aquaveo.com" },
@@ -10,13 +10,14 @@ dependencies = [
     "pyyaml>=6.0.1",
     "numpy>=1.25.2",
     "netcdf4>=1.6.4",
+    "dask>=2023.9.2",
     "pandas>=2.1.0",
     "xarray>=2023.8.0",
     "fastparquet>=2023.8.0",
     "zarr>=2.16.1",
     "boto3>=1.28.65",
     "basininflow>=0.13.0",
-    # "RAPIDpy>=2.6.0",  # Install netcdf_qinit branch from BYU Hydroinformatics GitHub
+    # "RAPIDpy>=2.7.0",  # Install from BYU Hydroinformatics GitHub account
     # "ecflow>=5.11.3",  # Install with conda
 ]
 requires-python = ">=3.10"
