@@ -1,11 +1,13 @@
-import os
-import json
 import argparse
-import numpy as np
-import netCDF4 as nc
+import json
+import os
 from glob import glob
+
+import netCDF4 as nc
+import numpy as np
 from RAPIDpy.dataset import RAPIDDataset
 from RAPIDpy.helper_functions import csv_to_list
+
 from geoglows_ecflow.resources.helper_functions import (
     create_logger,
     find_current_rapid_output,
@@ -14,15 +16,15 @@ from geoglows_ecflow.resources.helper_functions import (
 
 class StreamSegment(object):
     def __init__(
-        self,
-        stream_id,
-        down_id,
-        up_id_array,
-        init_flow=0,
-        station=None,
-        station_flow=None,
-        station_distance=None,
-        natural_flow=None,
+            self,
+            stream_id,
+            down_id,
+            up_id_array,
+            init_flow=0,
+            station=None,
+            station_flow=None,
+            station_distance=None,
+            natural_flow=None,
     ):
         self.stream_id = stream_id
         self.down_id = down_id  # downstream segment id
@@ -55,13 +57,13 @@ class StreamNetworkInitializer(object):
         # add gage id and natur flow to network
         if gage_ids_natur_flow_file is not None:
             if (
-                os.path.exists(gage_ids_natur_flow_file)
-                and gage_ids_natur_flow_file
+                    os.path.exists(gage_ids_natur_flow_file)
+                    and gage_ids_natur_flow_file
             ):
                 self._add_gage_ids_natur_flow_to_network()
 
     def compute_init_flows_from_past_forecast(
-        self, forecasted_streamflow_files
+            self, forecasted_streamflow_files
     ):
         """
         Compute initial flows from the past ECMWF forecast ensemble
@@ -76,16 +78,18 @@ class StreamNetworkInitializer(object):
                     ignored_comid_list,
                 ) = qout_nc.get_subset_riverid_index_list(self.stream_id_array)
             print("Extracting data ...")
-            reach_prediciton_array = np.zeros(
+            # instead of making a zeros array, make an array full of nans of the same shape
+            reach_prediciton_array = np.full(
                 (
                     len(self.stream_id_array),
                     len(forecasted_streamflow_files),
                     1,
-                )
+                ),
+                np.nan,
             )
             # get information from datasets
             for file_index, forecasted_streamflow_file in enumerate(
-                forecasted_streamflow_files
+                    forecasted_streamflow_files
             ):
                 try:
                     ensemble_index = int(
@@ -93,74 +97,30 @@ class StreamNetworkInitializer(object):
                         .split(".")[0]
                         .split("_")[-1]
                     )
+                    if ensemble_index == 52:
+                        continue
                     try:
                         # Get hydrograph data from ECMWF Ensemble
-                        with RAPIDDataset(
-                            forecasted_streamflow_file
-                        ) as predicted_qout_nc:
-                            time_length = predicted_qout_nc.size_time
-                            if not predicted_qout_nc.is_time_variable_valid():
-                                # data is raw rapid output
-                                data_values_2d_array = (
-                                    predicted_qout_nc.get_qout_index(
-                                        comid_index_list, time_index=1
-                                    )
-                                )
-                            else:
-                                # data is CF compliant and ouput has time=0
-                                if ensemble_index == 52:
-                                    if time_length == 125:
-                                        data_values_2d_array = (
-                                            predicted_qout_nc.get_qout_index(
-                                                comid_index_list, time_index=24
-                                            )
-                                        )
-                                    else:
-                                        data_values_2d_array = (
-                                            predicted_qout_nc.get_qout_index(
-                                                comid_index_list, time_index=4
-                                            )
-                                        )
-                                else:
-                                    if time_length == 85:
-                                        data_values_2d_array = (
-                                            predicted_qout_nc.get_qout_index(
-                                                comid_index_list, time_index=8
-                                            )
-                                        )
-                                    else:
-                                        data_values_2d_array = (
-                                            predicted_qout_nc.get_qout_index(
-                                                comid_index_list, time_index=4
-                                            )
-                                        )
-                    except Exception:
-                        print(
-                            "Invalid ECMWF forecast file {0}".format(
-                                forecasted_streamflow_file
+                        with RAPIDDataset(forecasted_streamflow_file) as predicted_qout_nc:
+                            data_values_2d_array = (
+                                predicted_qout_nc
+                                .get_qout_index(comid_index_list, time_index=8)
                             )
-                        )
+                    except Exception:
+                        print("Invalid ECMWF forecast file {0}".format(forecasted_streamflow_file))
                         continue
                     # organize the data
                     for comid_index, _ in enumerate(reordered_comid_list):
-                        reach_prediciton_array[comid_index][file_index] = (
-                            data_values_2d_array[comid_index]
-                        )
+                        reach_prediciton_array[comid_index][file_index] = data_values_2d_array[comid_index]
                 except Exception as e:
                     print(e)
-                    # pass
 
             print("Analyzing data ...")
             for index in range(len(self.stream_segments)):
                 try:
                     # get where comids are in netcdf file
-                    data_index = np.where(
-                        reordered_comid_list
-                        == self.stream_segments[index].stream_id
-                    )[0][0]
-                    self.stream_segments[index].init_flow = np.mean(
-                        reach_prediciton_array[data_index]
-                    )
+                    data_index = np.where(reordered_comid_list == self.stream_segments[index].stream_id)[0][0]
+                    self.stream_segments[index].init_flow = np.nanmean(reach_prediciton_array[data_index])
                 except Exception:
                     # stream id not found in list. Adding zero init flow ...
                     self.stream_segments[index].init_flow = 0
@@ -176,48 +136,25 @@ class StreamNetworkInitializer(object):
         print("Writing to initial flow file: {0}".format(out_file))
         if out_file.endswith(".csv"):
             with open(out_file, "w") as init_flow_file:
-                for stream_index, stream_segment in enumerate(
-                    self.stream_segments
-                ):
+                for stream_index, stream_segment in enumerate(self.stream_segments):
                     if stream_segment.station_flow is not None:
-                        init_flow_file.write(
-                            "{}\n".format(stream_segment.station_flow)
-                        )
+                        init_flow_file.write("{}\n".format(stream_segment.station_flow))
                     else:
-                        init_flow_file.write(
-                            "{}\n".format(stream_segment.init_flow)
-                        )
+                        init_flow_file.write("{}\n".format(stream_segment.init_flow))
         else:
             init_flows_array = np.zeros(len(self.stream_segments))
-            for stream_index, stream_segment in enumerate(
-                self.stream_segments
-            ):
+            for stream_index, stream_segment in enumerate(self.stream_segments):
                 try:
                     if stream_segment.station_flow is not None:
-                        init_flows_array[stream_index] = (
-                            stream_segment.station_flow
-                        )
+                        init_flows_array[stream_index] = stream_segment.station_flow
                     else:
-                        init_flows_array[stream_index] = (
-                            stream_segment.init_flow
-                        )
+                        init_flows_array[stream_index] = stream_segment.init_flow
                 except IndexError:
                     log.warning("Stream index not found.")
-            with nc.Dataset(
-                out_file, "w", format="NETCDF3_CLASSIC"
-            ) as init_flow_file:
+            with nc.Dataset(out_file, "w", format="NETCDF3_CLASSIC") as init_flow_file:
                 init_flow_file.createDimension("Time", 1)
-                init_flow_file.createDimension(
-                    "rivid", len(self.stream_segments)
-                )
-                var_Qout = init_flow_file.createVariable(
-                    "Qout",
-                    "f8",
-                    (
-                        "Time",
-                        "rivid",
-                    ),
-                )
+                init_flow_file.createDimension("rivid", len(self.stream_segments))
+                var_Qout = init_flow_file.createVariable("Qout", "f8", ("Time", "rivid",), )
                 var_Qout[:] = init_flows_array
 
     def _generate_network_from_connectivity(self):
@@ -226,9 +163,7 @@ class StreamNetworkInitializer(object):
         """
         print("Generating river network from connectivity file ...")
         connectivity_table = csv_to_list(self.connectivity_file)
-        self.stream_id_array = np.array(
-            [row[0] for row in connectivity_table], dtype=np.int64
-        )
+        self.stream_id_array = np.array([row[0] for row in connectivity_table], dtype=np.int64)
         # add each stream segment to network
         for connectivity_info in connectivity_table:
             stream_id = int(connectivity_info[0])
@@ -241,9 +176,7 @@ class StreamNetworkInitializer(object):
                 StreamSegment(
                     stream_id=stream_id,
                     down_id=downstream_id,
-                    up_id_array=connectivity_info[
-                        2 : 2 + int(connectivity_info[2])
-                    ],
+                    up_id_array=connectivity_info[2: 2 + int(connectivity_info[2])],
                 )
             )
 
@@ -264,7 +197,7 @@ def _cleanup_past_qinit(input_directory):
 
 
 def compute_init_rapid_flows(
-    prediction_files: list, input_directory: str, date: str
+        prediction_files: list, input_directory: str, date: str
 ) -> None:
     """Gets mean of all 52 ensembles for the next day and prints to netcdf (nc)
         format as initial flow Qinit_file (BS_opt_Qinit). The
