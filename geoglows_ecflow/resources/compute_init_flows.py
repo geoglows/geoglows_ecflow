@@ -5,8 +5,8 @@ from glob import glob
 
 import netCDF4 as nc
 import numpy as np
-from RAPIDpy.dataset import RAPIDDataset
-from RAPIDpy.helper_functions import csv_to_list
+from .RAPIDpy.dataset import RAPIDDataset
+from .RAPIDpy.helper_functions import csv_to_list
 
 from geoglows_ecflow.resources.helper_functions import (
     create_logger,
