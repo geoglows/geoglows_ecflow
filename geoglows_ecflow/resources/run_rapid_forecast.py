@@ -3,7 +3,7 @@ import argparse
 import datetime
 import json
 from glob import glob
-from RAPIDpy import RAPID
+from RAPIDpy.rapid import RAPID
 from geoglows_ecflow.resources.helper_functions import (
     create_logger,
     get_ensemble_number_from_forecast,
