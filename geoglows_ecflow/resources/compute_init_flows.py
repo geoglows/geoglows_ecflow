@@ -2,8 +2,8 @@ import argparse
 import os
 
 import netCDF4 as nc
+import pandas as pd
 import xarray as xr
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     with xr.open_dataset(os.path.join(workspace, "output", f"nces_avg_{vpu}.nc")) as average_flows:
         qinit_values = average_flows.Qout[7, :]
         river_ids = average_flows.rivid[:]
-        init_date = average_flows.time[7].strftime('%Y%M%d %X')
+        init_date = pd.to_datetime(average_flows.time[7].values).strftime("%Y-%m-%d %X")
 
     with nc.Dataset(output_file, "w", format="NETCDF3_CLASSIC") as qinit_nc:
         # create dimensions
