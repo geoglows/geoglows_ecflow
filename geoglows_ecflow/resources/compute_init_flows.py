@@ -1,5 +1,6 @@
 import argparse
 import os
+import json
 
 import netCDF4 as nc
 import pandas as pd
@@ -21,8 +22,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     workspace = args.workspace[0]
     vpu = args.vpu[0]
+    
+    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+        data = json.load(f)
+        ymd = data["date"]
 
-    ymd = os.getenv('YMD', None)
     output_file = os.path.join(workspace, 'input', vpu, f'Qinit_{ymd}.nc')
 
     with xr.open_dataset(os.path.join(workspace, "output", f"nces_avg_{vpu}.nc")) as average_flows:
