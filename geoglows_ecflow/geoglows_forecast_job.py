@@ -9,6 +9,7 @@ from geoglows_ecflow.utils import (
     validate,
 )
 from geoglows_ecflow.resources.helper_functions import get_valid_vpucode_list
+from geoglows_ecflow.workflow.suites.comfies.sdeploy import sdeploy
 
 
 def create_rapid_run_family(
@@ -278,167 +279,22 @@ def create_aws_family(
     return family
 
 
-def create(config_path: str) -> None:
+def create(config_path: str, target_files=[], params_values={}, dry_run=False) -> None:
     """Create the ecflow job definition file and its file structure.
 
     Args:
         config_path (str): Path to the configuration file.
+        target_files (list): list of files to deploy; if empty, all files will be deployed
+        params_values (dict): param/value dict; these override params from config file
+        dry_run (bool): if True, no actual files will be created in target dir; useful for testing
 
     Returns:
-        Defs: ecflow job definition.
+        None
+        
+    Raises:
+        DeployError: deploying the suite failed
     """
-    # Load the configuration file
-    config = load_config(config_path)
-    python_exec = config["python_exec"]
-    ecflow_home = config["ecflow_home"]
-    ecflow_bin = config.get("ecflow_bin")
-    workspace = config["workspace"]
-    local_run = config.get("local_run")
-    ecflow_entities = config["ecflow_entities"]
-    ecflow_suite = config["ecflow_entities"]["suite"]["name"]
-    ecflow_suite_logs = config["ecflow_entities"]["suite"]["logs"]
-    rapid_family_name = config["ecflow_entities"]["family"][0]["name"]
-    init_flows_family_name = config["ecflow_entities"]["family"][1]["name"]
-    esri_table_family_name = config["ecflow_entities"]["family"][2]["name"]
-    nc_to_zarr_family_name = config["ecflow_entities"]["family"][3]["name"]
-    aws_family_name = config["ecflow_entities"]["family"][4]["name"]
-    day_one_family_name = config["ecflow_entities"]["family"][5]["name"]
-    prep_task_name = config["ecflow_entities"]["task"][0]["name"]
-    esri_table_task_name = config["ecflow_entities"]["task"][1]["name"]
-    day_one_task_name = config["ecflow_entities"]["task"][2]["name"]
-    rapid_task_name = config["ecflow_entities"]["task"][3]["name"]
-    init_flows_task_name = config["ecflow_entities"]["task"][4]["name"]
-    nc_to_zarr_task_name = config["ecflow_entities"]["task"][5]["name"]
-    aws_task_name = config["ecflow_entities"]["task"][6]["name"]
-    rapid_exec = config["rapid_exec"]
-    rapid_exec_dir = config["rapid_exec_dir"]
-    rapid_subprocess_dir = config["rapid_subprocess_dir"]
-    forecast_records_dir = config["forecast_records_dir"]
-    nces_exec = config["nces_exec"]
-    aws_config = config["aws_config"]
-
-    # Get vpu list
-    vpu_list = get_valid_vpucode_list(os.path.join(workspace, "input"))
-
-    # Prepare the directory structure
-    prepare_dir_structure(
-        python_exec, ecflow_home, ecflow_entities, ecflow_suite_logs
-    )
-
-    # Create symlinks for all tasks
-    task_family_list = [
-        (rapid_task_name, rapid_family_name),
-        (init_flows_task_name, init_flows_family_name),
-        (esri_table_task_name, esri_table_family_name),
-        (nc_to_zarr_task_name, nc_to_zarr_family_name),
-        (day_one_task_name, day_one_family_name),
-        (aws_task_name, aws_family_name),
-    ]
-    create_symlinks_for_family_tasks(
-        ecflow_home, ecflow_suite, task_family_list, vpu_list
-    )
-
-    # Define the ecflow job
-    defs = Defs()
-
-    # Add the suite to the job
-    suite = defs.add_suite(ecflow_suite)
-
-    # Set variables for the suite
-    suite_variables = {
-        "ECF_INCLUDE": ecflow_home,
-        "ECF_FILES": os.path.join(ecflow_home, ecflow_suite),
-        "ECF_HOME": ecflow_home,
-        "ECF_BIN": ecflow_bin if local_run else "",
-        "WORKSPACE": workspace,
-    }
-    add_variables(suite, suite_variables)
-
-    # Define 'prep_task'
-    prep_task = suite.add_task(prep_task_name)
-
-    # Set variables for 'prep_task'
-    prep_task_ps = os.path.join(
-        os.path.dirname(__file__), "resources", "prep_rapid_forecast.py"
-    )
-    prep_task_vars = {"PYSCRIPT": prep_task_ps}
-    add_variables(prep_task, prep_task_vars)
-
-    # Add the rapid run family to the suite
-    rapid_run_family = create_rapid_run_family(
-        rapid_family_name,
-        rapid_task_name,
-        vpu_list,
-        prep_task_name,
-        rapid_exec,
-        rapid_exec_dir,
-        rapid_subprocess_dir,
-        is_local=local_run,
-    )
-    suite.add_family(rapid_run_family)
-
-    # Add the esri table family to the suite
-    esri_table_family = create_esri_table_family(
-        esri_table_family_name,
-        esri_table_task_name,
-        vpu_list,
-        nces_exec,
-        rapid_family_name,
-        is_local=local_run,
-    )
-    suite.add_family(esri_table_family)
-
-    # Add the init flows family to the suite
-    nc_to_zarr_family = create_nc_to_zarr_family(
-        nc_to_zarr_family_name,
-        nc_to_zarr_task_name,
-        vpu_list,
-        esri_table_family_name,
-        is_local=local_run,
-    )
-    suite.add_family(nc_to_zarr_family)
-
-    # Add the init flows family to the suite
-    init_flows_family = create_init_flows_family(
-        init_flows_family_name,
-        init_flows_task_name,
-        vpu_list,
-        nc_to_zarr_family_name,
-        is_local=local_run,
-    )
-    suite.add_family(init_flows_family)
-
-    # Add the init flows family to the suite
-    day_one_family = create_day_one_family(
-        day_one_family_name,
-        day_one_task_name,
-        vpu_list,
-        forecast_records_dir,
-        init_flows_family_name,
-        is_local=local_run,
-    )
-    suite.add_family(day_one_family)
-
-    # Add the aws family to the suite
-    aws_family = create_aws_family(
-        aws_family_name,
-        aws_task_name,
-        vpu_list,
-        aws_config,
-        day_one_family_name,
-        is_local=local_run,
-    )
-    suite.add_family(aws_family)
-
-    # Validate definition job
-    validate(defs)
-
-    # Save the ecflow definition job
-    output_path = os.path.join(ecflow_home, f"{ecflow_suite}.def")
-    print(f"Saving definition to file '{output_path}'")
-    defs.save_as_defs(output_path)
-
-    return defs
+    sdeploy(config_path, target_files=target_files, params_values=params_values, dry_run=dry_run)
 
 
 if __name__ == "__main__":  # pragma: no cover
