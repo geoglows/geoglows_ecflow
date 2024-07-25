@@ -1,0 +1,70 @@
+#!/bin/bash -l
+%manual
+
+    Build Virtual Env for Rapid Workflow
+
+  OPERATORS
+
+    Leave Aborted
+    Inform analyst during weekdays.
+
+
+  ANALYSTS
+
+     Should only run on a suite installation.
+     Contact person responsible during working hours.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+%includeonce <python3.h>
+%includeonce <gdal.h>
+
+_CONDA_SET_GEOTIFF_CSV=""
+GDAL_DATA=$suite_libdir/virtualenvs/rapid/share/gdal
+GDAL_DRIVER_PATH=$suite_libdir/virtualenvs/rapid/lib/gdalplugins
+GEOTIFF_CSV=''
+PROJ_LIB=$suite_libdir/virtualenvs/rapid/share/proj
+export _CONDA_SET_GDAL_DATA=""
+export _CONDA_SET_GDAL_DRIVER_PATH=""
+export _CONDA_SET_PROJ_LIB=""
+export LC_ALL=C
+rm -rf $suite_libdir/virtualenvs/rapid
+
+module load conda/22.11.1-2
+
+cat > venv.yaml << EOF
+name: rapid
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python==3.10.13
+  - python-dateutil==2.8.2
+  - pytz==2023.3
+  - requests==2.24.0
+  - shapely==2.0.2
+  - future==0.18.3
+  - pyyaml==6.0.1
+  - numpy==1.26.3
+  - pandas==2.1.4
+  - fastparquet==2023.10.1
+  - xarray==2024.2.0
+  - dask==2024.2.1
+  - netcdf4==1.6.5
+  - zarr==2.16.1
+  - boto3==1.28.65
+  - pangaea==0.0.4
+  - nco==5.1.9
+  - awscli
+EOF
+
+conda config --set auto_activate_base True
+conda create python=3.10 -c conda-forge -p $suite_libdir/virtualenvs/rapid
+conda activate $suite_libdir/virtualenvs/rapid
+set +u
+conda install -c conda-forge -y mamba
+mamba env update -f venv.yaml -p $suite_libdir/virtualenvs/rapid
+set -u
+%include <remove_conda.h>

@@ -1,0 +1,43 @@
+#!/bin/bash -l
+
+%manual
+
+Runs once a day to update the attached YMD variable to show ERA5 Data Availability.
+
+The value of the YMD variable is calculated as follows:
+
+  1. the current system date is used as a base
+  2. We list mars for the last 10 days
+  3. If the data Entries > 0  we get thee last date and set our YMD
+
+OPERATORS
+
+  If failure is due to system issue (mars, disk etc)
+  Please rectify that and rerun.
+
+  Do not set complete, Leave Aborted
+  Please Inform Integration Team analyst sociable hours.
+  
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+%includeonce <newdate.h>
+
+# get system date (base)
+base=%ECF_DATE%
+year=${base:0:4}
+mars > out.txt <<EOF
+   list,date=-120/to/-1,time=18,stream=oper,step=0,type=fc,levtype=sfc,expver=${suite_era5_expver},class=ea,param=8.128
+EOF
+cat out.txt
+num=$(cat out.txt | grep Entries | tr -dc '[0-9][0-9]')
+
+if [[ num -gt 0 ]];then
+    era5_ymd=$(cat out.txt | grep "^${year:0:2}" | tail -1 | cut -d' ' -f1 | tr -dc '[0-9]')
+    era5_ymd=$(newdate -D $era5_ymd +1)
+    # update YMD variable
+    ecflow_client --alter change variable YMD $era5_ymd %ECF_NAME:0%
+	ecflow_client --label=base $base
+	ecflow_client --label=YMD $era5_ymd
+fi

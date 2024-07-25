@@ -1,0 +1,54 @@
+#!/bin/bash -l
+%manual
+
+     GLOFAS External Customer Data Extraction
+
+
+     Operators : 
+
+     Try a few reruns.
+     No Callout, please create JIRA Ticket for Suite Operations
+
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <scripts.h>
+%includeonce <ecpds.h>
+
+echo "HOST IS: $HOST"
+echo "WORKING DIR IS: $PWD"
+
+# ===========================================================
+mkdir -p $ens_fcdir
+filename=${ens_fcdir}/${ens_ymd}.${ens_base}.boundary.grib
+
+mars << EOF
+retrieve,
+	target="${filename}",
+	date=$ens_ymd,
+	time=$ens_base,
+	stream=oper,
+	step=0/to/90/by/1,
+    expver=${ens_mars_expver},
+	type=fc,
+	class=od,
+	area   = 80.0/-55.0/10.0/75.0,  # north/west/south/east
+	grid   = 0.5/0.5,
+	levtype = pl,
+	levelist= 200,
+	param  = z
+retrieve,
+	levtype = sfc,
+	levelist= off,
+    # param = skt/stl1/stl2/stl3/stl4/swvl1/swvl2/swvl3/swvl4/sd/src/tsn/ci/istl1
+	param=235.128/139.128/170.128/183.128/236.128/039.128/040.128/041.128/042.128/141.128/198.128/238.128/031.128/035.128
+retrieve,
+	levtype = sfc, param = sp
+	# levtype = ml, levelist = 1, param = lnsp
+retrieve,
+	levtype = ml,
+	levelist = 1/to/137,
+	param = q/clwc/ciwc/t/u/v
+EOF
