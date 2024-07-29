@@ -28,15 +28,15 @@ class Builder(GEOGLOWSBaseBuilder):
     ecflow_module = "geoglows_ecflow.workflow.parts.nodes"
 
     scripts = [
-        "geoglows_ecflow/workflow/suites/scripts/rapid",
-        "geoglows_ecflow/workflow/suites/scripts/common",
+        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/common",
     ]
 
     includes = [
-        "geoglows_ecflow/workflow/suites/scripts/rapid",
-        "geoglows_ecflow/workflow/suites/scripts/common",
+        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/common",
     ]
-    
+
     def build(self):
         """
         Create parts and wire them together into an GLOFAS suite.
@@ -114,7 +114,7 @@ class Builder(GEOGLOWSBaseBuilder):
         # make family
         n_make = Family("make")
         n_packages = PackageInstallers(
-            packages=["scripts", "rapidpy", "basininflow", "geoglows_ecflow"]
+            packages=["scripts"]
         )
 
         n_build_petsc = Task("build_petsc")
@@ -281,15 +281,17 @@ class Builder(GEOGLOWSBaseBuilder):
                     )
                     n_ens_ens.add(n_member)
 
-            n_nc_to_zarr = Task("nc_to_zarr")
-            n_nc_to_zarr.trigger = n_ens.complete & n_hr.complete
-
             n_vpus = Family("vpu_list")
             for vpu in vpu_list:
                 n_vpu = Family(vpu.replace("-", "_"))
                 n_vpu.add_variable("VPU", vpu)
-                n_vpu.add_task("plain_table")
-                n_vpu.add_task("comp_init")
+                n_vpu.add_task("nco_calc")
+                n_vpu.add_task("comp_init").add_trigger(
+                    "nco_calc == complete"
+                )
+                n_vpu.add_task("plain_table").add_trigger(
+                    "nco_calc == complete"
+                )
                 n_vpu.add_task("day_one").add_trigger(
                     "plain_table == complete"
                 )
@@ -297,6 +299,9 @@ class Builder(GEOGLOWSBaseBuilder):
                 n_vpus.add(n_vpu)
             n_vpus.trigger = n_ens.complete & n_hr.complete
 
+            n_nc_to_zarr = Task("nc_to_zarr")
+            n_nc_to_zarr.trigger = n_ens.complete & n_hr.complete & n_vpus.complete
+            
             n_plain_table = Task("combine_plain_table")
             n_plain_table.trigger = n_vpus.complete
 
@@ -310,7 +315,7 @@ class Builder(GEOGLOWSBaseBuilder):
 
             n_archive_to_aws = Task("archive_to_aws")
             n_archive_to_aws.trigger = (
-                n_ens.complete & n_hr.complete & n_plain_table.complete
+                n_nc_to_zarr.complete & n_plain_table.complete
             )
 
             n_diss = Family("diss")
@@ -348,8 +353,8 @@ class Builder(GEOGLOWSBaseBuilder):
                     n_initialize,
                     n_hr,
                     n_ens,
-                    n_nc_to_zarr,
                     n_vpus,
+                    n_nc_to_zarr,
                     n_plain_table,
                     n_forecast_warnings,
                     n_archive_qinit,
@@ -378,4 +383,3 @@ class Builder(GEOGLOWSBaseBuilder):
         n_lag.add(n_daily_lag)
         n_daily_lag.add(DummyEpilog(done=barrier_ymd > lag_ymd))
         suite.add(n_barrier, n_main, n_lag)
-        

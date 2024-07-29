@@ -63,6 +63,7 @@ from geoglows_ecflow.workflow.comfies.sjob import SshHost
 from pkg_resources import parse_version
 from geoglows_ecflow.workflow.comfies.version import __version__
 from geoglows_ecflow.workflow.comfies.py2 import basestring
+import ecflow
 
 
 class DeployError(Exception):
