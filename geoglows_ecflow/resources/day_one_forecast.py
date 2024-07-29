@@ -10,7 +10,7 @@ import xarray as xr
 import netCDF4 as nc
 
 
-def merge_forecast_qout_files(rapid_output: str, vpu: str or int):
+def merge_forecast_qout_files(rapid_output: str, vpu: str | int):
     # list the forecast files
     prediction_files = sorted(
         glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))

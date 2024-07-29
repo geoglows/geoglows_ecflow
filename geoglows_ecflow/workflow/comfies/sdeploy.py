@@ -1,13 +1,21 @@
 """
-componets of the 'sdeploy' commandline utility
+Components of the 'sdeploy' commandline utility
 
-Modified by Aquaveo
+Modified by Aquaveo to work with geoglows_ecflow
 
-Copyright 2024 ecmwf
+Copyright 2024 ECMWF
 
-Licensed under the Apache License, Version 2.0 (the "License")
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 import os
@@ -24,31 +32,52 @@ import imp
 import importlib
 import argparse
 
-from geoglows_ecflow.workflow.suites.comfies.memoize import memoize
-from geoglows_ecflow.workflow.suites.comfies.visitor import Visitor
-from geoglows_ecflow.workflow.suites.comfies.fs import ensure_dir, expand_path, real_path
-from geoglows_ecflow.workflow.suites.comfies.config import Config, PythonConfigFile, PythonConfigPath
-from geoglows_ecflow.workflow.suites.comfies.config import ConfigNotFoundError, ConfigLoadingError
-from geoglows_ecflow.workflow.suites.comfies.config import ConfigError, ConfigItemTypeError, ConfigItemNotFoundError
-from geoglows_ecflow.workflow.suites.comfies.config import path, word, pathlist, boolean
-from geoglows_ecflow.workflow.suites.comfies.templating import TemplateProcessor, TemplateError
-from geoglows_ecflow.workflow.suites.comfies.sjob import SshHost
+from geoglows_ecflow.workflow.comfies.memoize import memoize
+from geoglows_ecflow.workflow.comfies.visitor import Visitor
+from geoglows_ecflow.workflow.comfies.fs import (
+    ensure_dir,
+    expand_path,
+    real_path,
+)
+from geoglows_ecflow.workflow.comfies.config import (
+    Config,
+    PythonConfigFile,
+    PythonConfigPath,
+)
+from geoglows_ecflow.workflow.comfies.config import ConfigNotFoundError
+from geoglows_ecflow.workflow.comfies.config import (
+    ConfigError,
+    ConfigItemNotFoundError,
+)
+from geoglows_ecflow.workflow.comfies.config import (
+    path,
+    word,
+    pathlist,
+    boolean,
+)
+from geoglows_ecflow.workflow.comfies.templating import (
+    TemplateProcessor,
+    TemplateError,
+)
+from geoglows_ecflow.workflow.comfies.sjob import SshHost
 from pkg_resources import parse_version
-from geoglows_ecflow.workflow.suites.comfies.version import __version__
-from geoglows_ecflow.workflow.suites.comfies.py2 import basestring
+from geoglows_ecflow.workflow.comfies.version import __version__
+from geoglows_ecflow.workflow.comfies.py2 import basestring
+
 
 class DeployError(Exception):
     pass
 
+
 class FileNotFoundError(DeployError):
     pass
+
 
 class ComfiesVersionError(Exception):
     pass
 
 
 class PathFinder(object):
-
     """
     Look for a file in a list of directories
     """
@@ -68,8 +97,8 @@ class PathFinder(object):
             if os.path.isfile(srcpath):
                 return srcpath
         raise FileNotFoundError(
-                name + ' not found in {}'.format(', '.join(self._srcdirs)))
-
+            name + " not found in {}".format(", ".join(self._srcdirs))
+        )
 
 
 class Text(object):
@@ -86,7 +115,7 @@ def read_path(path):
     """
     Read file given it's path, return Text object
     """
-    with codecs.open(path, 'r', encoding='utf-8') as f:
+    with codecs.open(path, "r", encoding="utf-8") as f:
         t = f.read()
         return Text(t, path)
 
@@ -95,6 +124,7 @@ class FileReader(object):
     """
     Read a file given it's name, return Text object
     """
+
     def __init__(self, path_finder):
         self._path_finder = path_finder
 
@@ -104,7 +134,6 @@ class FileReader(object):
 
 
 class ScriptIncludesFinder(object):
-
     """
     Parse script recursively and look for includes.
     """
@@ -113,7 +142,7 @@ class ScriptIncludesFinder(object):
         self._path_finder = path_finder
 
     @memoize
-    def search(self, srcpath, expected=None, tag='%'):
+    def search(self, srcpath, expected=None, tag="%"):
         """
         Return paths of all ecFlow include files
         required by the ecFlow script.
@@ -126,9 +155,9 @@ class ScriptIncludesFinder(object):
         """
         # look for %include and %includenopp directives
         # TODO: implement handling of %ecfmicro directives.
-        include_pattern = tag + r'include\S*\s*<(.+)>'
+        include_pattern = tag + r"include\S*\s*<(.+)>"
         found = set()
-        with open(srcpath, 'r') as file:
+        with open(srcpath, "r") as file:
             for line in file:
                 if line[:1] != tag:
                     continue
@@ -140,7 +169,9 @@ class ScriptIncludesFinder(object):
                     include_path = self._path_finder.find(include_file)
                 except FileNotFoundError as e:
                     if expected is None or include_file in expected:
-                        raise FileNotFoundError('{} (required by {})'.format(str(e), srcpath))
+                        raise FileNotFoundError(
+                            "{} (required by {})".format(str(e), srcpath)
+                        )
                 if include_path in found:
                     continue
                 found.add(include_path)
@@ -148,25 +179,26 @@ class ScriptIncludesFinder(object):
         return list(found)
 
 
-
 # ----------------------------
 # Suite scripts finder.
 # ----------------------------
+
 
 class MissingSourceError(Exception):
     def __init__(self, message, filename):
         super(MissingSourceError, self).__init__(message)
         self.filename = filename
 
+
 class MissingTaskScriptError(MissingSourceError):
     pass
+
 
 class MissingIncludeError(MissingSourceError):
     pass
 
 
 class SuiteScriptsFinder(Visitor):
-
     """
     Find all task scripts and includes of a suite.
     """
@@ -198,12 +230,17 @@ class SuiteScriptsFinder(Visitor):
         if self._filenames is not None:
             # client wants to locate only some suite scripts
             scripts_srcpaths, remaining_filenames = match_files_to_paths(
-                    scripts_srcpaths, filenames)
+                scripts_srcpaths, filenames
+            )
             includes_srcpaths, remaining_filenames = match_files_to_paths(
-                    includes_srcpaths, remaining_filenames)
+                includes_srcpaths, remaining_filenames
+            )
             if remaining_filenames:
-                log.error('unexpected target file(s): {}'.format(
-                    ', '.join(remaining_filenames)))
+                log.error(
+                    "unexpected target file(s): {}".format(
+                        ", ".join(remaining_filenames)
+                    )
+                )
                 raise FileNotFoundError(remaining_filenames[0])
         return scripts_srcpaths, includes_srcpaths
 
@@ -212,12 +249,11 @@ class SuiteScriptsFinder(Visitor):
         for child in container.nodes:
             self.visit(child)
 
-
     def visit_Task(self, task):
         # handler for nodes of type Task
-        extn = task.get_variable('ECF_EXTN')
+        extn = task.get_variable("ECF_EXTN")
         if not extn.name():
-            extn = '.ecf'
+            extn = ".ecf"
         script_name = task.name() + extn.value()
         try:
             script_path = self._script_finder.find(script_name)
@@ -240,15 +276,14 @@ class SuiteScriptsFinder(Visitor):
                     self._scripts_missing.add(script_name)
                 return
         self._scripts_found.add(script_path)
-        #try:
+        # try:
         includes_paths = self._ecflow_includes_finder.search(
-            script_path, expected=self._filenames)
+            script_path, expected=self._filenames
+        )
         self._includes_found.update(includes_paths)
 
 
-
 class ScriptsInstaller(object):
-
     def __init__(self, reader, processor, writer, dry_run=False):
         self._read = reader
         self._process = processor
@@ -257,22 +292,22 @@ class ScriptsInstaller(object):
 
     def install(self, srcpaths, destdir):
         if not srcpaths:
-            log.info('nothing to deploy.')
+            log.info("nothing to deploy.")
             return
         for srcpath in srcpaths:
             filename = os.path.basename(srcpath)
             destpath = os.path.join(destdir, filename)
             if not self._dry_run:
                 if self._write == simple_file_writer:
-                    #ugly. TODO: Implement abstract dir creation.
+                    # ugly. TODO: Implement abstract dir creation.
                     ensure_dir(destdir)
-            log.info('{} --> {}'.format(srcpath, destpath))
+            log.info("{} --> {}".format(srcpath, destpath))
             note = "#\n# Deployed by {user}@{host} on {date} from {src}\n#\n".format(
-                    user = getpass.getuser(),
-                    host = socket.getfqdn(),
-                    date = datetime.datetime.now(),
-                    src =  os.path.abspath(srcpath),
-                    )
+                user=getpass.getuser(),
+                host=socket.getfqdn(),
+                date=datetime.datetime.now(),
+                src=os.path.abspath(srcpath),
+            )
             text = self._read(srcpath)
             try:
                 processed = self._process(text)
@@ -282,9 +317,7 @@ class ScriptsInstaller(object):
                 self._write(processed, destpath)
 
 
-
 class CrossUserFileWriter(object):
-
     def __init__(self, sudo):
         self._sudo = sudo
 
@@ -293,25 +326,24 @@ class CrossUserFileWriter(object):
         Write contents of the text (string)
         to the dest_path file.
         """
-        dest_dir =  os.path.dirname(dest_path)
+        dest_dir = os.path.dirname(dest_path)
         if append:
-            redir = '>>'
+            redir = ">>"
         else:
-            redir = '>'
-        cmd = 'mkdir -p {dest_dir}; cat {redir} {dest_path}'.format(
-            dest_dir=dest_dir, redir=redir, dest_path=dest_path)
+            redir = ">"
+        cmd = "mkdir -p {dest_dir}; cat {redir} {dest_path}".format(
+            dest_dir=dest_dir, redir=redir, dest_path=dest_path
+        )
         self._sudo.execute(cmd, stdin_str=text)
-
 
 
 def simple_file_writer(text, dest_path, append=False):
     if append:
-        mode = 'ab'
+        mode = "ab"
     else:
-        mode = 'wb'
+        mode = "wb"
     with open(dest_path, mode) as f:
-        f.write(text.encode('utf-8'))
-
+        f.write(text.encode("utf-8"))
 
 
 def match_files_to_paths(paths, filenames):
@@ -336,7 +368,7 @@ def module_exists(name, path):
     Test if module exists in path.
     If module doesn't exist return False.
     """
-    for x in name.split('.'):
+    for x in name.split("."):
         try:
             file, path, descr = imp.find_module(x, [path])
         except ImportError:
@@ -371,7 +403,10 @@ def prepend_root_dirs(paths, roots):
 
 
 class DeployConfigFile(PythonConfigFile):
-    search_path = [os.getcwd(), os.path.join(os.environ['HOME'], ".comfies", "sdeploy")]
+    search_path = [
+        os.getcwd(),
+        os.path.join(os.environ["HOME"], ".comfies", "sdeploy"),
+    ]
 
 
 class DeployConfigPath(PythonConfigPath):
@@ -387,6 +422,7 @@ class TrimurtiVars(object):
     """
     Generator of ecFlow variables for trimurti job manager
     """
+
     def __init__(self, config):
         self._config = config
 
@@ -395,15 +431,22 @@ class TrimurtiVars(object):
         Return ECF_JOB_CMD and ECF_KILL_CMD variables set to trimurti
         """
         executable = self._config.get(
-                'manager.executable', default='/home/ma/emos/bin/trimurti')
+            "manager.executable", default="/home/ma/emos/bin/trimurti"
+        )
         trimurti_cmd = executable
         submit_cmd = "%TRIMURTI% %USER% %JOBHOST% %ECF_JOB% %ECF_JOBOUT%"
-        status_cmd = "%TRIMURTI% %USER% %JOBHOST% %ECF_JOB% %ECF_JOBOUT% status"
-        kill_cmd =  "%TRIMURTI% %USER% %JOBHOST% %ECF_RID% %ECF_JOB% %ECF_JOBOUT% kill"
-        return [ecflow.Variable('TRIMURTI', trimurti_cmd),
-                ecflow.Variable('ECF_JOB_CMD', submit_cmd),
-                ecflow.Variable('ECF_STATUS_CMD', status_cmd),
-                ecflow.Variable('ECF_KILL_CMD', kill_cmd)]
+        status_cmd = (
+            "%TRIMURTI% %USER% %JOBHOST% %ECF_JOB% %ECF_JOBOUT% status"
+        )
+        kill_cmd = (
+            "%TRIMURTI% %USER% %JOBHOST% %ECF_RID% %ECF_JOB% %ECF_JOBOUT% kill"
+        )
+        return [
+            ecflow.Variable("TRIMURTI", trimurti_cmd),
+            ecflow.Variable("ECF_JOB_CMD", submit_cmd),
+            ecflow.Variable("ECF_STATUS_CMD", status_cmd),
+            ecflow.Variable("ECF_KILL_CMD", kill_cmd),
+        ]
 
     def _dest(self, desttype):
         """
@@ -411,46 +454,46 @@ class TrimurtiVars(object):
         get the destination parameters from the config and generate
         a list of corresponding ecFlow variables.
         """
-        config = self._config.section('destinations.' + desttype)
-        host = config.get('host', None)
-        bkup_host = config.get('bkup_host', None)
-        sthost = config.get('sthost', None)
-        bkup_sthost = config.get('bkup_sthost', None)
-        user = config.get('user', None)
-        queue = config.get('queue', None)
-        account = config.get('account', None)
-        outdir = config.get('outdir', None)
-        logserver = config.get('logserver', None)
-        ncpus = config.get('ncpus', None)
-        mem = config.get('mem', None)
-        logport = config.get('logport', 9316)
+        config = self._config.section("destinations." + desttype)
+        host = config.get("host", None)
+        bkup_host = config.get("bkup_host", None)
+        sthost = config.get("sthost", None)
+        bkup_sthost = config.get("bkup_sthost", None)
+        user = config.get("user", None)
+        queue = config.get("queue", None)
+        account = config.get("account", None)
+        outdir = config.get("outdir", None)
+        logserver = config.get("logserver", None)
+        ncpus = config.get("ncpus", None)
+        mem = config.get("mem", None)
+        logport = config.get("logport", 9316)
         v = []
         if host is not None:
-            v.append(ecflow.Variable('JOBHOST', host))
+            v.append(ecflow.Variable("JOBHOST", host))
         if bkup_host is not None:
-            v.append(ecflow.Variable('BKUP_HOST', bkup_host))
+            v.append(ecflow.Variable("BKUP_HOST", bkup_host))
         if sthost is not None:
-            v.append(ecflow.Variable('STHOST', sthost))
+            v.append(ecflow.Variable("STHOST", sthost))
         if bkup_sthost is not None:
-            v.append(ecflow.Variable('BKUP_STHOST', bkup_sthost))
+            v.append(ecflow.Variable("BKUP_STHOST", bkup_sthost))
         if user is not None:
-            v.append(ecflow.Variable('USER', user))
+            v.append(ecflow.Variable("USER", user))
         if queue is not None:
-            v.append(ecflow.Variable('QUEUE', queue))
+            v.append(ecflow.Variable("QUEUE", queue))
         if account is not None:
-            v.append(ecflow.Variable('ACCOUNT', account))
+            v.append(ecflow.Variable("ACCOUNT", account))
         if outdir is not None:
-            v.append(ecflow.Variable('ECF_OUT', outdir))
+            v.append(ecflow.Variable("ECF_OUT", outdir))
             default_logdir = outdir
         if logserver is not None:
-            v.append(ecflow.Variable('ECF_LOGHOST', logserver))
-            v.append(ecflow.Variable('ECF_LOGPORT', logport))
+            v.append(ecflow.Variable("ECF_LOGHOST", logserver))
+            v.append(ecflow.Variable("ECF_LOGPORT", logport))
         if ncpus is not None:
-            v.append(ecflow.Variable('NCPUS', ncpus))
+            v.append(ecflow.Variable("NCPUS", ncpus))
         if nodes is not None:
-            v.append(ecflow.Variable('NODES', nodes))
+            v.append(ecflow.Variable("NODES", nodes))
         if mem is not None:
-            v.append(ecflow.Variable('MEM', mem))
+            v.append(ecflow.Variable("MEM", mem))
         return v
 
     def dest(self, desttype, fallback=None):
@@ -459,7 +502,7 @@ class TrimurtiVars(object):
         except ConfigItemNotFoundError as config_item_not_found_error:
             if fallback is None:
                 raise config_item_not_found_error
-            if fallback == 'PARENT':
+            if fallback == "PARENT":
                 return []
             if isinstance(fallback, basestring):
                 # fallback is given as a destination name
@@ -468,13 +511,17 @@ class TrimurtiVars(object):
                 # fallback is given as a list of ecFlow variables
                 vars = fallback
             else:
-                raise ValueError('Invalid fallback destination ({})'.format(fallback))
+                raise ValueError(
+                    "Invalid fallback destination ({})".format(fallback)
+                )
         return vars
+
 
 class TroikaVars(object):
     """
     Generator of ecFlow variables for trimurti job manager
     """
+
     def __init__(self, config):
         self._config = config
 
@@ -483,22 +530,31 @@ class TroikaVars(object):
         Return ECF_JOB_CMD and ECF_KILL_CMD variables set to trimurti
         """
         troika_cmd = self._config.get(
-                'manager.executable', default='/usr/local/bin/troika')
+            "manager.executable", default="/usr/local/bin/troika"
+        )
         troika_config = self._config.get(
-                'manager.config', default='/opt/troika/etc/troika.yml')
+            "manager.config", default="/opt/troika/etc/troika.yml"
+        )
         troika_from_server = self._config.get(
-                'manager.settings_from_server', type=boolean, default=False)
+            "manager.settings_from_server", type=boolean, default=False
+        )
         submit_cmd = "%TROIKA% -vv -c %TROIKA_CONFIG% submit -u %USER% -o %ECF_JOBOUT% %REMOTE_HOST% %ECF_JOB%"
-        status_cmd = "%TROIKA% -vv -c %TROIKA_CONFIG% monitor %REMOTE_HOST% %ECF_JOB%"
-        kill_cmd =  "%TROIKA% -vv -c %TROIKA_CONFIG% kill  %REMOTE_HOST% %ECF_JOB%"
+        status_cmd = (
+            "%TROIKA% -vv -c %TROIKA_CONFIG% monitor %REMOTE_HOST% %ECF_JOB%"
+        )
+        kill_cmd = (
+            "%TROIKA% -vv -c %TROIKA_CONFIG% kill  %REMOTE_HOST% %ECF_JOB%"
+        )
         if troika_from_server:
             return []
         else:
-            return [ecflow.Variable('TROIKA', troika_cmd),
-                ecflow.Variable('TROIKA_CONFIG', troika_config),
-                ecflow.Variable('ECF_JOB_CMD', submit_cmd),
-                ecflow.Variable('ECF_STATUS_CMD', status_cmd),
-                ecflow.Variable('ECF_KILL_CMD', kill_cmd)]
+            return [
+                ecflow.Variable("TROIKA", troika_cmd),
+                ecflow.Variable("TROIKA_CONFIG", troika_config),
+                ecflow.Variable("ECF_JOB_CMD", submit_cmd),
+                ecflow.Variable("ECF_STATUS_CMD", status_cmd),
+                ecflow.Variable("ECF_KILL_CMD", kill_cmd),
+            ]
 
     def _dest(self, desttype):
         """
@@ -506,44 +562,44 @@ class TroikaVars(object):
         get the destination parameters from the config and generate
         a list of corresponding ecFlow variables.
         """
-        config = self._config.section('destinations.' + desttype)
-        host = config.get('host', None)
-        bkup_host = config.get('bkup_host', None)
-        sthost = config.get('sthost', None)
-        bkup_sthost = config.get('bkup_sthost', None)
-        user = config.get('user', None)
-        queue = config.get('queue', None)
-        account = config.get('account', None)
-        outdir = config.get('outdir', None)
-        logserver = config.get('logserver', None)
-        ncpus = config.get('ncpus', None)
-        mem = config.get('mem', None)
-        logport = config.get('logport', 9316)
+        config = self._config.section("destinations." + desttype)
+        host = config.get("host", None)
+        bkup_host = config.get("bkup_host", None)
+        sthost = config.get("sthost", None)
+        bkup_sthost = config.get("bkup_sthost", None)
+        user = config.get("user", None)
+        queue = config.get("queue", None)
+        account = config.get("account", None)
+        outdir = config.get("outdir", None)
+        logserver = config.get("logserver", None)
+        ncpus = config.get("ncpus", None)
+        mem = config.get("mem", None)
+        logport = config.get("logport", 9316)
         v = []
         if host is not None:
-            v.append(ecflow.Variable('REMOTE_HOST', host))
+            v.append(ecflow.Variable("REMOTE_HOST", host))
         if bkup_host is not None:
-            v.append(ecflow.Variable('BKUP_HOST', bkup_host))
+            v.append(ecflow.Variable("BKUP_HOST", bkup_host))
         if sthost is not None:
-            v.append(ecflow.Variable('STHOST', sthost))
+            v.append(ecflow.Variable("STHOST", sthost))
         if bkup_sthost is not None:
-            v.append(ecflow.Variable('BKUP_STHOST', bkup_sthost))
+            v.append(ecflow.Variable("BKUP_STHOST", bkup_sthost))
         if user is not None:
-            v.append(ecflow.Variable('USER', user))
+            v.append(ecflow.Variable("USER", user))
         if queue is not None:
-            v.append(ecflow.Variable('QUEUE', queue))
+            v.append(ecflow.Variable("QUEUE", queue))
         if account is not None:
-            v.append(ecflow.Variable('ACCOUNT', account))
+            v.append(ecflow.Variable("ACCOUNT", account))
         if outdir is not None:
-            v.append(ecflow.Variable('ECF_OUT', outdir))
+            v.append(ecflow.Variable("ECF_OUT", outdir))
             default_logdir = outdir
         if logserver is not None:
-            v.append(ecflow.Variable('ECF_LOGHOST', logserver))
-            v.append(ecflow.Variable('ECF_LOGPORT', logport))
+            v.append(ecflow.Variable("ECF_LOGHOST", logserver))
+            v.append(ecflow.Variable("ECF_LOGPORT", logport))
         if ncpus is not None:
-            v.append(ecflow.Variable('NCPUS', ncpus))
+            v.append(ecflow.Variable("NCPUS", ncpus))
         if mem is not None:
-            v.append(ecflow.Variable('MEM', mem))
+            v.append(ecflow.Variable("MEM", mem))
         return v
 
     def dest(self, desttype, fallback=None):
@@ -552,7 +608,7 @@ class TroikaVars(object):
         except ConfigItemNotFoundError as config_item_not_found_error:
             if fallback is None:
                 raise config_item_not_found_error
-            if fallback == 'PARENT':
+            if fallback == "PARENT":
                 return []
             if isinstance(fallback, basestring):
                 # fallback is given as a destination name
@@ -561,7 +617,9 @@ class TroikaVars(object):
                 # fallback is given as a list of ecFlow variables
                 vars = fallback
             else:
-                raise ValueError('Invalid fallback destination ({})'.format(fallback))
+                raise ValueError(
+                    "Invalid fallback destination ({})".format(fallback)
+                )
         return vars
 
 
@@ -569,6 +627,7 @@ class SjobVars(object):
     """
     Generator of ecFlow variables for 'sjob' job manager
     """
+
     def __init__(self, config):
         self._config = config
 
@@ -576,13 +635,22 @@ class SjobVars(object):
         """
         Return ECF_JOB_CMD and ECF_KILL_CMD variables set to sjob
         """
-        executable = self._config.get('manager.executable', default='sjob')
-        submit_cmd = executable + " submit -v %JOBDEST% %ECF_JOB% %ECF_JOBOUT% > %ECF_JOB%.jobinfo 2>&1"
-        status_cmd = executable + " status -v %ECF_JOB%.jobinfo > %ECF_JOB%.stat 2>&1"
-        kill_cmd = executable + " kill -v %ECF_JOB%.jobinfo >> %ECF_JOB%.jobinfo 2>&1"
-        return [ecflow.Variable('ECF_JOB_CMD', submit_cmd),
-                ecflow.Variable('ECF_STATUS_CMD', status_cmd),
-                ecflow.Variable('ECF_KILL_CMD', kill_cmd)]
+        executable = self._config.get("manager.executable", default="sjob")
+        submit_cmd = (
+            executable
+            + " submit -v %JOBDEST% %ECF_JOB% %ECF_JOBOUT% > %ECF_JOB%.jobinfo 2>&1"
+        )
+        status_cmd = (
+            executable + " status -v %ECF_JOB%.jobinfo > %ECF_JOB%.stat 2>&1"
+        )
+        kill_cmd = (
+            executable + " kill -v %ECF_JOB%.jobinfo >> %ECF_JOB%.jobinfo 2>&1"
+        )
+        return [
+            ecflow.Variable("ECF_JOB_CMD", submit_cmd),
+            ecflow.Variable("ECF_STATUS_CMD", status_cmd),
+            ecflow.Variable("ECF_KILL_CMD", kill_cmd),
+        ]
 
     def _dest(self, desttype):
         """
@@ -592,49 +660,48 @@ class SjobVars(object):
         """
         v = []
         try:
-            config = self._config.section('destinations.' + desttype)
+            config = self._config.section("destinations." + desttype)
         except ConfigItemNotFoundError:
             return v
 
-        host = config.get('host', None)
-        bkup_host = config.get('bkup_host', None)
-        sthost = config.get('sthost', None)
-        bkup_sthost = config.get('bkup_sthost', None)
-        user = config.get('user', None)
-        queue = config.get('queue', None)
-        account = config.get('account', None)
-        outdir = config.get('outdir', None)
-        logserver = config.get('logserver', None)
-        ncpus = config.get('ncpus', None)
-        mem = config.get('mem', None)
-        logport = config.get('logport', 9316)
+        host = config.get("host", None)
+        bkup_host = config.get("bkup_host", None)
+        sthost = config.get("sthost", None)
+        bkup_sthost = config.get("bkup_sthost", None)
+        user = config.get("user", None)
+        queue = config.get("queue", None)
+        account = config.get("account", None)
+        outdir = config.get("outdir", None)
+        logserver = config.get("logserver", None)
+        ncpus = config.get("ncpus", None)
+        mem = config.get("mem", None)
+        logport = config.get("logport", 9316)
         v = []
         if host is not None:
-            v.append(ecflow.Variable('JOBHOST', host))
+            v.append(ecflow.Variable("JOBHOST", host))
         if bkup_host is not None:
-            v.append(ecflow.Variable('BKUP_HOST', bkup_host))
+            v.append(ecflow.Variable("BKUP_HOST", bkup_host))
         if sthost is not None:
-            v.append(ecflow.Variable('STHOST', sthost))
+            v.append(ecflow.Variable("STHOST", sthost))
         if bkup_sthost is not None:
-            v.append(ecflow.Variable('BKUP_STHOST', bkup_sthost))
+            v.append(ecflow.Variable("BKUP_STHOST", bkup_sthost))
         if user is not None:
-            v.append(ecflow.Variable('USER', user))
+            v.append(ecflow.Variable("USER", user))
         if queue is not None:
-            v.append(ecflow.Variable('QUEUE', queue))
+            v.append(ecflow.Variable("QUEUE", queue))
         if account is not None:
-            v.append(ecflow.Variable('ACCOUNT', account))
+            v.append(ecflow.Variable("ACCOUNT", account))
         if outdir is not None:
-            v.append(ecflow.Variable('ECF_OUT', outdir))
+            v.append(ecflow.Variable("ECF_OUT", outdir))
             default_logdir = outdir
         if logserver is not None:
-            v.append(ecflow.Variable('ECF_LOGHOST', logserver))
-            v.append(ecflow.Variable('ECF_LOGPORT', logport))
+            v.append(ecflow.Variable("ECF_LOGHOST", logserver))
+            v.append(ecflow.Variable("ECF_LOGPORT", logport))
         if ncpus is not None:
-            v.append(ecflow.Variable('NCPUS', ncpus))
+            v.append(ecflow.Variable("NCPUS", ncpus))
         if mem is not None:
-            v.append(ecflow.Variable('MEM', mem))
+            v.append(ecflow.Variable("MEM", mem))
         return v
-
 
     def dest(self, desttype, fallback=None):
         """
@@ -650,28 +717,30 @@ class SjobVars(object):
         we return an empty list and the variables defined up the node tree will apply.
         """
         try:
-            config = self._config.section('destinations.' + desttype)
-            destname = config.get('name')
-            vars = [ecflow.Variable('JOBDEST', destname)]
-            vars=vars + self._dest(desttype)
+            config = self._config.section("destinations." + desttype)
+            destname = config.get("name")
+            vars = [ecflow.Variable("JOBDEST", destname)]
+            vars = vars + self._dest(desttype)
         except:
             try:
-                destname = self._config.get('destinations.' + desttype)
-                vars = [ecflow.Variable('JOBDEST', destname)]
+                destname = self._config.get("destinations." + desttype)
+                vars = [ecflow.Variable("JOBDEST", destname)]
             except ConfigItemNotFoundError as config_item_not_found_error:
                 if fallback is None:
                     raise config_item_not_found_error
-                if fallback == 'PARENT':
+                if fallback == "PARENT":
                     return []
                 if isinstance(fallback, basestring):
                     # fallback is given as a destination name
-                    destname = self._config.get('destinations.' + fallback)
-                    vars = [ecflow.Variable('JOBDEST', destname)]
+                    destname = self._config.get("destinations." + fallback)
+                    vars = [ecflow.Variable("JOBDEST", destname)]
                 elif isinstance(fallback, list):
                     # fallback is given as a list of ecFlow variables (just one variable)
                     vars = fallback
                 else:
-                    raise ValueError('Invalid fallback destination ({})'.format(fallback))
+                    raise ValueError(
+                        "Invalid fallback destination ({})".format(fallback)
+                    )
         return vars
 
 
@@ -687,12 +756,12 @@ class BaseBuilder(object):
     # of ecFlow API by setting the 'ecflow_module' class attribute
     # in the derived class.
 
-    ecflow_module = 'comfies.ooflow'
+    ecflow_module = "comfies.ooflow"
 
     # Minimum version of comfies package required to correctly build the
     # suite. It can be set in the builder to a SemVer string (e.g. '1.2.3')
 
-    comfies_minimum_version = 'any'
+    comfies_minimum_version = "any"
 
     # Search paths for the suite's scripts and includes.
     # Subclasses of BaseBuilder should set these lists.
@@ -701,38 +770,46 @@ class BaseBuilder(object):
     includes = []
 
     def __init__(self, config):
-        globals()['ecflow'] = importlib.import_module(self.ecflow_module)
-        if parse_version(self.comfies_minimum_version) > parse_version(__version__):
-            raise ComfiesVersionError('This suite needs version {}'
-                    ' or later of comfies package'.format(self.comfies_minimum_version))
+        globals()["ecflow"] = importlib.import_module(self.ecflow_module)
+        if parse_version(self.comfies_minimum_version) > parse_version(
+            __version__
+        ):
+            raise ComfiesVersionError(
+                "This suite needs version {}"
+                " or later of comfies package".format(
+                    self.comfies_minimum_version
+                )
+            )
 
         # create minimal suite
 
-        suite_name = config.get('name', type=word)
-        defdir = expand_path(config.get('target.root', type=path))
-        if ':' in defdir:
-            defdir = defdir.split(':')[1]
-        ecf_home = expand_path(config.get('jobs.root', type=path))
-        ecf_files = os.path.join(defdir, 'ecf')
-        ecf_include = os.path.join(defdir, 'inc')
-        ecf_extn = config.get('script_extension', '.sms')
+        suite_name = config.get("name", type=word)
+        defdir = expand_path(config.get("target.root", type=path))
+        if ":" in defdir:
+            defdir = defdir.split(":")[1]
+        ecf_home = expand_path(config.get("jobs.root", type=path))
+        ecf_files = os.path.join(defdir, "ecf")
+        ecf_include = os.path.join(defdir, "inc")
+        ecf_extn = config.get("script_extension", ".sms")
 
-        suite_as_family = config.get('suite_as_family', type=boolean, default=False) 
+        suite_as_family = config.get(
+            "suite_as_family", type=boolean, default=False
+        )
         if suite_as_family:
-            project_name = config.get('project_name', type=word)
+            project_name = config.get("project_name", type=word)
             super_suite = ecflow.Suite(project_name)
             suite = ecflow.Family(suite_name)
-            suite.add_variable('SUITE', f'/{project_name}/{suite_name}')
+            suite.add_variable("SUITE", f"/{project_name}/{suite_name}")
         else:
             suite = ecflow.Suite(suite_name)
 
         suite.add_defstatus(ecflow.DState.suspended)
-        suite.add_variable('DEFDIR', defdir)
-        suite.add_variable('ECF_HOME', ecf_home)
-        suite.add_variable('ECF_OUT', '%ECF_HOME%')
-        suite.add_variable('ECF_FILES', ecf_files)
-        suite.add_variable('ECF_INCLUDE', ecf_include)
-        suite.add_variable('ECF_EXTN', ecf_extn)
+        suite.add_variable("DEFDIR", defdir)
+        suite.add_variable("ECF_HOME", ecf_home)
+        suite.add_variable("ECF_OUT", "%ECF_HOME%")
+        suite.add_variable("ECF_FILES", ecf_files)
+        suite.add_variable("ECF_INCLUDE", ecf_include)
+        suite.add_variable("ECF_EXTN", ecf_extn)
 
         # Default (suite-level) job manager settings.
         # out of the box, sdeploy framework supports:
@@ -741,29 +818,29 @@ class BaseBuilder(object):
         # in classes derived from BaseBuilder.
 
         # The job manager; default is 'sjob'
-        job_manager = config.get('jobs.manager', 'sjob')
+        job_manager = config.get("jobs.manager", "sjob")
         # The config section with job destination(s)
-        jobs_config = config.section('jobs')
+        jobs_config = config.section("jobs")
         # Create self.jobvars (ecFlow variables generator) appropriate
         # for the selected job manager
         jobvars = None
         try:
-            job_manager = config.section('jobs.manager')
-            job_manager_name=job_manager.get('name')
+            job_manager = config.section("jobs.manager")
+            job_manager_name = job_manager.get("name")
         except:
-           job_manager_name = config.get('jobs.manager', 'sjob')
-        if job_manager_name == 'sjob':
-           jobvars = SjobVars(jobs_config)
-        if job_manager_name == 'trimurti':
-           jobvars = TrimurtiVars(jobs_config)
-        if job_manager_name == 'troika':
-           jobvars = TroikaVars(jobs_config)
+            job_manager_name = config.get("jobs.manager", "sjob")
+        if job_manager_name == "sjob":
+            jobvars = SjobVars(jobs_config)
+        if job_manager_name == "trimurti":
+            jobvars = TrimurtiVars(jobs_config)
+        if job_manager_name == "troika":
+            jobvars = TroikaVars(jobs_config)
         if jobvars is not None:
             # Generate and add ECF_JOB_CMD and ECF_KILL_CMD variables to the suite
             for var in jobvars.commands():
                 suite.add_variable(var)
             # Generate and add ecFlow variables corresponding to the 'default' job destination
-            for var in jobvars.dest('default'):
+            for var in jobvars.dest("default"):
                 suite.add_variable(var)
         # add defs, suite, config and jobvars attributes
         # to be used by builder classes derived from BaseBuilder.
@@ -782,16 +859,14 @@ class BaseBuilder(object):
             # node.add(self.jobvars.dest('local'))
             self.jobvars = jobvars
 
-
     def __call__(self):
-        log.info('Generating suite definition...')
+        log.info("Generating suite definition...")
         try:
             self.build()
         except ConfigError as e:
-            raise DeployError('suite generation failed: {}'.format(e))
-        log.info('Validating suite structure...')
+            raise DeployError("suite generation failed: {}".format(e))
+        log.info("Validating suite structure...")
         self.defs.check()
-
 
     def build(self):
         """
@@ -802,7 +877,6 @@ class BaseBuilder(object):
         raise NotImplementedError()
 
 
-
 # ----------------------------------------------
 # Components of taskcfg app.
 # The 'taskcfg' command translates a section
@@ -811,17 +885,16 @@ class BaseBuilder(object):
 # TODO: This is obsolete feature from the old
 # SMS suite - templating should be used instead.
 # ----------------------------------------------
-#
 
 
 def _dict_to_ksh_assoc_array(name, data):
-    """ From python dict, generate KSH associative array """
+    """From python dict, generate KSH associative array"""
     lines = []
-    lines.append(name + '=(\n')
+    lines.append(name + "=(\n")
     for k, v in data.items():
-        lines.append('  [{}]={}\n'.format(k, v))
-    lines.append(')\n')
-    text = ''.join(lines)
+        lines.append("  [{}]={}\n".format(k, v))
+    lines.append(")\n")
+    text = "".join(lines)
     return text
 
 
@@ -832,9 +905,9 @@ def section_to_ksh(section):
         if isinstance(value, dict):
             chunks.append(_dict_to_ksh_assoc_array(key, value))
         else:
-            lines.append('{}={}\n'.format(key, value))
+            lines.append("{}={}\n".format(key, value))
     lines.sort()
-    text = ''.join(lines) + ''.join(chunks)
+    text = "".join(lines) + "".join(chunks)
     return text
 
 
@@ -846,7 +919,7 @@ def read_deploy_config(name):
     except ConfigNotFoundError:
         # then try to find config in usual places
         source = DeployConfigFile(name)
-    log.info('config path is: {}'.format(source.origin))
+    log.info("config path is: {}".format(source.origin))
     config = Config(source)
     return config
 
@@ -854,15 +927,17 @@ def read_deploy_config(name):
 def taskcfg(configname, sectionname):
     config = read_deploy_config(configname)
     section_data = config.data(sectionname)
-    print('section_data ' + section_data)
+    print("section_data " + section_data)
     print(section_to_ksh(section_data))
 
 
 @contextlib.contextmanager
 def _remember_cwd():
-    curdir= os.getcwd()
-    try: yield
-    finally: os.chdir(curdir)
+    curdir = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(curdir)
 
 
 def sdeploy(config_path, target_files=[], params_values={}, dry_run=True):
@@ -897,7 +972,7 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
     # Config parameters provided using '--set' commandline option
     # override the ones read from the config file
 
-    for param, value in params_values:
+    for param, value in params_values.items():
         config.set(param, value)
 
     # Change current directory to where config is
@@ -907,25 +982,27 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
     try:
         # source.root can be a single path or a list of comma-separated paths
         # Each path can have 'host:' prefix (which is not used by sdeploy).
-        srcdirs = config.get('source.root', type=pathlist)
-        log.info('source.root is: {}'.format(','.join(srcdirs)))
+        srcdirs = config.get("source.root", type=pathlist)
+        log.info("source.root is: {}".format(",".join(srcdirs)))
         # remove host names (if any).
-        srcdirs = [real_path(d.split(':', 2)[-1]) for d in srcdirs]
-        log.info('srcdir: {}'.format(','.join(srcdirs)))
-        builder_module_path = config.get('source.builder', type=word)
-        target=config.get('target.root', type=path)
-        if ':' in target:
-            target_host = target.split(':')[0]
-            destdir = expand_path(target.split(':')[1])
+        srcdirs = [real_path(d.split(":", 2)[-1]) for d in srcdirs]
+        log.info("srcdir: {}".format(",".join(srcdirs)))
+        builder_module_path = config.get("source.builder", type=word)
+        target = config.get("target.root", type=path)
+        if ":" in target:
+            target_host = target.split(":")[0]
+            destdir = expand_path(target.split(":")[1])
         else:
-            destdir = expand_path(config.get('target.root', type=path))
-            target_host='localhost'
-        user_name = config.get('target.owner', type=word, default=getpass.getuser())
+            destdir = expand_path(config.get("target.root", type=path))
+            target_host = "localhost"
+        user_name = config.get(
+            "target.owner", type=word, default=getpass.getuser()
+        )
         # TODO: get rid of the TASK section..
         # Before templating was implemented, this section was used
         # to generate an include file (task.inc) which was then included
         # by every task script. Probably better to use templating instead.
-        task_section = config.data('task', default=None)
+        task_section = config.data("task", default=None)
     except (AttributeError, ConfigError) as e:
         log.error(str(e))
         raise DeployError(str(e))
@@ -934,17 +1011,8 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
     # compose the deployer
     # ----------------------
 
-    log.info('Loading suite builder module "{}"'.format(builder_module_path))
-    try:
-        srcdir = find_module_dir(builder_module_path, srcdirs)
-        # the source directory of the suite is the one containing the builder.
-        os.chdir(srcdir)
-    except ImportError as e:
-        log.error('could not find suite builder {} in {}'.format(
-            builder_module_path, ','.join(srcdirs)))
-        raise DeployError(str(e))
-    log.info('"{}" found in {}'.format(builder_module_path, srcdir))
-    sys.path.extend(srcdirs)
+    log.info(f'Loading suite builder module "{builder_module_path}"')
+    srcdir = srcdirs[0]
     builder_module = importlib.import_module(builder_module_path)
     try:
         suite_builder = builder_module.Builder(config)
@@ -960,21 +1028,23 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
         log.error(e)
         raise DeployError(str(e))
     # suite builder class defines default script and include search paths
-    default_scripts_search_path  = ':'.join(suite_builder.scripts)
-    default_includes_search_path = ':'.join(suite_builder.includes)
+    default_scripts_search_path = ":".join(suite_builder.scripts)
+    default_includes_search_path = ":".join(suite_builder.includes)
     # User may modify the default search path in his deploy config file;
     # User's path specification may contain reference to the default search path, e.g.
     # 'myscripts:{scripts}' - we need to substitute the "{scripts}" parameter.
     try:
-        scripts_search_path = config.get('source.scripts', '{scripts}').format(
-            scripts = default_scripts_search_path)
-        includes_search_path = config.get('source.includes', '{includes}').format(
-            includes = default_includes_search_path)
+        scripts_search_path = config.get("source.scripts", "{scripts}").format(
+            scripts=default_scripts_search_path
+        )
+        includes_search_path = config.get(
+            "source.includes", "{includes}"
+        ).format(includes=default_includes_search_path)
     except ConfigError as e:
         log.error(e)
         raise DeployError(str(e))
-    scripts = scripts_search_path.split(':')
-    includes = includes_search_path.split(':')
+    scripts = scripts_search_path.split(":")
+    includes = includes_search_path.split(":")
     # expand '~' if present
     scripts = [os.path.expanduser(d) for d in scripts]
     includes = [os.path.expanduser(d) for d in includes]
@@ -992,11 +1062,12 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
     include_path_finder = PathFinder(includes)
     script_includes_finder = ScriptIncludesFinder(include_path_finder)
     suite_scripts_finder = SuiteScriptsFinder(
-            script_path_finder, script_includes_finder)
+        script_path_finder, script_includes_finder
+    )
 
     include_reader = FileReader(include_path_finder)
     processor = TemplateProcessor(include_reader, config=config)
-    if user_name == getpass.getuser() and 'localhost' in target_host:
+    if user_name == getpass.getuser() and "localhost" in target_host:
         file_writer = simple_file_writer
     else:
         # User who is deploying the suite is not the one running the suite.
@@ -1005,11 +1076,11 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
         file_writer = CrossUserFileWriter(sudo=commands_over_ssh)
 
     scripts_installer = ScriptsInstaller(
-        reader = read_path,
-        processor = processor,
-        writer = file_writer,
-        dry_run = dry_run)
-
+        reader=read_path,
+        processor=processor,
+        writer=file_writer,
+        dry_run=dry_run,
+    )
 
     # ------------------
     # run the deployer
@@ -1018,7 +1089,7 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
     # generate and deploy the suite definition file
 
     suite = suite_builder.suite
-    def_path = os.path.join(destdir, suite.name() + '.def')
+    def_path = os.path.join(destdir, suite.name() + ".def")
     def_filename = os.path.basename(def_path)
     write_def = True
     if not target_files:
@@ -1030,34 +1101,34 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
             target_files.remove(def_filename)
     if write_def:
         if not dry_run:
-            if user_name == getpass.getuser() and 'localhost' in target_host:
+            if user_name == getpass.getuser() and "localhost" in target_host:
                 # ugly. TODO: implement generic "session" class
                 # for executing commands locally or remotely
                 ensure_dir(destdir)
             file_writer(str(suite_builder.defs), def_path)
-        log.info('suite definition written as {}'.format(def_path))
+        log.info("suite definition written as {}".format(def_path))
 
     # deploy task scripts and include files
 
-    log.info('Deploying scripts and include files...')
-    log.info('source root of the suite: ' + srcdir)
-    log.info('scripts search path: ' + ', '.join(scripts))
-    log.info('includes search path: ' + ', '.join(includes))
+    log.info("Deploying scripts and include files...")
+    log.info("source root of the suite: " + srcdir)
+    log.info("scripts search path: " + ", ".join(scripts))
+    log.info("includes search path: " + ", ".join(includes))
     # walk the suite tree; find scripts and includes for all tasks.
     try:
-        scripts_srcpaths, includes_srcpaths = \
-            suite_scripts_finder.find_scripts(
-                suite, filenames=target_files)
+        scripts_srcpaths, includes_srcpaths = (
+            suite_scripts_finder.find_scripts(suite, filenames=target_files)
+        )
     except FileNotFoundError as e:
         log.error(str(e))
         raise DeployError(str(e))
-    log.info('target root: ' + destdir)
-    scripts_destdir = os.path.join(destdir, 'ecf')
-    includes_destdir = os.path.join(destdir, 'inc')
+    log.info("target root: " + destdir)
+    scripts_destdir = os.path.join(destdir, "ecf")
+    includes_destdir = os.path.join(destdir, "inc")
     try:
-        log.info('deploying task scripts:')
+        log.info("deploying task scripts:")
         scripts_installer.install(scripts_srcpaths, scripts_destdir)
-        log.info('deploying include files:')
+        log.info("deploying include files:")
         scripts_installer.install(includes_srcpaths, includes_destdir)
     except (DeployError, ConfigError) as e:
         log.error(str(e))
@@ -1065,113 +1136,101 @@ def _sdeploy(config_path, target_files, params_values, dry_run):
 
     if task_section is not None:
         # TODO: replace task.cfg include file generation with templating
-        taskcfg_path = os.path.join(includes_destdir, 'task.cfg')
-        log.info('Generating common task include file ' + taskcfg_path)
+        taskcfg_path = os.path.join(includes_destdir, "task.cfg")
+        log.info("Generating common task include file " + taskcfg_path)
         ksh_code = section_to_ksh(task_section)
         if not dry_run:
             if user_name == getpass.getuser():
                 ensure_dir(includes_destdir)
             file_writer(ksh_code, taskcfg_path)
 
-    # write some deployment log messages
-
-    # Get description of the version of the code being deployed.
-    # Write the description to 'project_version.h' and also append to sdeploy.log file
-    try:
-        git_describe = subprocess.check_output(
-                ['git', 'describe', '--always', '--long', '--dirty'],
-                stderr=subprocess.STDOUT, cwd=srcdir).decode('utf-8').strip()
-    except subprocess.CalledProcessError:
-        # git not available or there are no tags
-        source_version = srcdir
-        git_describe = 'unknown'
-    else:
-        source_version = '{}({})'.format(srcdir, git_describe)
-
-    # Append log line to the sdeploy.log file in the suite's deployment target directory
-    log_path = os.path.join(destdir, 'sdeploy.log')
-    log.info('Writing deployment log:')
-    log.info(log_path)
-    log_msg = '{}: source:{}, by:{}, config:{}, command:{}\n'.format(
-            datetime.datetime.now(), source_version, getpass.getuser(),
-            config.origin, ' '.join(sys.argv))
-    if not dry_run:
-        file_writer(log_msg, log_path, append=True)
-    # Generate 'project_version.h' file in the deployed suite's 'inc/' directory
-    project_version_h_path = os.path.join(includes_destdir, 'project_version.h')
-    log.info('Generating {}'.format(project_version_h_path))
-    project_version_h_text = '# autogenerated by sdeploy on {}\n'.format(datetime.datetime.now())
-    project_version_h_text += 'export PROJECT_VERSION={}'.format(git_describe)
-    if not dry_run:
-        file_writer(project_version_h_text, project_version_h_path)
     # Copy deployment config file to the target directory, for the record
     # (unless the config did not come from a file)
     if os.path.isfile(config.origin):
-        config_copy_path = os.path.join(destdir, 'sdeploy_config_copy')
-        with open(config.origin, 'r') as f:
-            file_config_text = ''.join(f.readlines())
-        cmdline_config_text = ''.join(['#     {} = {}\n'.format(param, value) for param, value in params_values])
-        log.info('Copying deployment config {} -> {}'.format(config.origin, config_copy_path))
+        config_copy_path = os.path.join(destdir, "sdeploy_config_copy")
+        with open(config.origin, "r") as f:
+            file_config_text = "".join(f.readlines())
+        cmdline_config_text = "".join(
+            [
+                "#     {} = {}\n".format(param, value)
+                for param, value in params_values
+            ]
+        )
+        log.info(
+            "Copying deployment config {} -> {}".format(
+                config.origin, config_copy_path
+            )
+        )
         if not dry_run:
-            file_writer('# Copy of {}\n# autogenerated by sdeploy on {}.\n\n'.format(
-                config.origin, datetime.datetime.now()), config_copy_path)
+            file_writer(
+                "# Copy of {}\n# autogenerated by sdeploy on {}.\n\n".format(
+                    config.origin, datetime.datetime.now()
+                ),
+                config_copy_path,
+            )
             if cmdline_config_text:
-                file_writer('# Additional commandline config was:\n', config_copy_path, append=True)
-                file_writer(cmdline_config_text + '\n\n', config_copy_path, append=True)
+                file_writer(
+                    "# Additional commandline config was:\n",
+                    config_copy_path,
+                    append=True,
+                )
+                file_writer(
+                    cmdline_config_text + "\n\n", config_copy_path, append=True
+                )
             file_writer(file_config_text, config_copy_path, append=True)
 
-    log.info('Deployment complete.')
+    log.info("Deployment complete.")
 
 
 def main(argv=sys.argv):
 
     PROG = os.path.basename(argv[0])
 
-    parser = argparse.ArgumentParser(
-            description = 'Deploy a suite',
-            prog = PROG
-            )
+    parser = argparse.ArgumentParser(description="Deploy a suite", prog=PROG)
 
     parser.add_argument(
-            'config',
-            metavar = 'CONFIG',
-            type = str,
-            help = 'deployment config (path or ID)'
-            )
+        "config",
+        metavar="CONFIG",
+        type=str,
+        help="deployment config (path or ID)",
+    )
 
     parser.add_argument(
-            '-v', '--verbose',
-            dest = 'verbose',
-            action = 'count',
-            default = 0,
-            help = 'verbose (-vv = more verbose)'
-            )
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="count",
+        default=0,
+        help="verbose (-vv = more verbose)",
+    )
 
     parser.add_argument(
-            '-d', '--dryrun',
-            dest = 'dry_run',
-            default = False,
-            action = 'store_true',
-            help = 'dry run'
-            )
+        "-d",
+        "--dryrun",
+        dest="dry_run",
+        default=False,
+        action="store_true",
+        help="dry run",
+    )
 
     parser.add_argument(
-            '-s', '--set',
-            dest = 'params_values',
-            action = 'append',
-            nargs = 2,
-            metavar = ('PARAM', 'VALUE'),
-            default = [],
-            help = 'set config parameter (can be used more than once)'
-            )
+        "-s",
+        "--set",
+        dest="params_values",
+        action="append",
+        nargs=2,
+        metavar=("PARAM", "VALUE"),
+        default=[],
+        help="set config parameter (can be used more than once)",
+    )
 
     parser.add_argument(
-            'target_files',
-            metavar = 'FILE',
-            type = str,
-            nargs = '*',
-            help = 'target file to be deployed (only a file name, not a path!); if none given, all suite files will be deployed.'
-            )
+        "target_files",
+        metavar="FILE",
+        type=str,
+        nargs="*",
+        help="target file to be deployed (only a file name, not a path!); if none given, all suite files will be deployed.",
+    )
 
     cmdline = parser.parse_args(argv[1:])
 
@@ -1184,21 +1243,19 @@ def main(argv=sys.argv):
     log_message_format = PROG + ": %(levelname)s: %(message)s"
     if cmdline.dry_run:
         log_message_format += " (DRY RUN)"
-    log.basicConfig(
-        format = log_message_format,
-        level = verbosity_level
-        )
+    log.basicConfig(format=log_message_format, level=verbosity_level)
 
     try:
         sdeploy(
-                config_path = cmdline.config,
-                target_files = cmdline.target_files,
-                params_values = cmdline.params_values,
-                dry_run = cmdline.dry_run
-                )
+            config_path=cmdline.config,
+            target_files=cmdline.target_files,
+            params_values=cmdline.params_values,
+            dry_run=cmdline.dry_run,
+        )
     except DeployError as e:
         return 1
     return 0
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     sys.exit(main())

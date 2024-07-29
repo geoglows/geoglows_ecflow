@@ -1,10 +1,8 @@
-import os
-from ..comfies.sdeploy import BaseBuilder as ComfiesBaseBuilder
-from ..comfies.config import ymd
+from geoglows_ecflow.workflow.comfies.sdeploy import BaseBuilder as ComfiesBaseBuilder
+from geoglows_ecflow.workflow.comfies.config import ymd
 
 
-class BaseBuilder(ComfiesBaseBuilder):
-
+class GEOGLOWSBaseBuilder(ComfiesBaseBuilder):
     def build(self):
 
         # Setting limits on how many tasks can run at once

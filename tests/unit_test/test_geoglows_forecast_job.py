@@ -2,7 +2,7 @@
 
 import os
 import pytest
-from geoglows_ecflow.geoglows_forecast_job import create_rapid_run_family, create
+from geoglows_ecflow.workflow.geoglows_forecast_job import create_rapid_run_family, create
 from ecflow import Expression, Family, Defs
 
 

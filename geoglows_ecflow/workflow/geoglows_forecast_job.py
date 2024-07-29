@@ -1,6 +1,7 @@
 import os
-import sys
-from ecflow import Defs, Family, Task
+import json
+import argparse
+from ecflow import Family, Task
 from geoglows_ecflow.utils import (
     load_config,
     prepare_dir_structure,
@@ -9,7 +10,7 @@ from geoglows_ecflow.utils import (
     validate,
 )
 from geoglows_ecflow.resources.helper_functions import get_valid_vpucode_list
-from geoglows_ecflow.workflow.suites.comfies.sdeploy import sdeploy
+from geoglows_ecflow.workflow.comfies.sdeploy import sdeploy
 
 
 def create_rapid_run_family(
@@ -279,23 +280,46 @@ def create_aws_family(
     return family
 
 
-def create(config_path: str, target_files=[], params_values={}, dry_run=False) -> None:
+def create(config_path: str, params_values={}, dry_run=False) -> None:
     """Create the ecflow job definition file and its file structure.
 
     Args:
         config_path (str): Path to the configuration file.
-        target_files (list): list of files to deploy; if empty, all files will be deployed
-        params_values (dict): param/value dict; these override params from config file
-        dry_run (bool): if True, no actual files will be created in target dir; useful for testing
+        params_values (dict): Param/value dict; these override params from
+            config file
+        dry_run (bool): If True, no actual files will be created in target dir;
+            useful for testing
 
     Returns:
         None
-        
+
     Raises:
         DeployError: deploying the suite failed
     """
-    sdeploy(config_path, target_files=target_files, params_values=params_values, dry_run=dry_run)
+    sdeploy(config_path, params_values=params_values, dry_run=dry_run)
 
 
 if __name__ == "__main__":  # pragma: no cover
-    create(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Run geoglows forecast job.")
+    parser.add_argument(
+        "--config", "-c", required=True, help="Path to the configuration file."
+    )
+    parser.add_argument(
+        "--params",
+        "-p",
+        required=False,
+        help="Param/value dict; these override params from config file.",
+    )
+    parser.add_argument(
+        "--dry",
+        "-d",
+        required=False,
+        help="If True, no actual files will be created in target dir.",
+    )
+    
+    args = parser.parse_args()
+    config = args.config
+    params = json.loads(args.params) if args.params else {}
+    dry = args.dry if args.dry else False
+
+    create(config, params, dry)

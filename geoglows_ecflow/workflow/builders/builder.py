@@ -1,32 +1,31 @@
-import os.path
-from .base import BaseBuilder
-from ..comfies.ooflow import NullNode, Trigger, Defuser
-from ..comfies.ooflow import all_complete, Event, complete
-from ..comfies.ooflow import complete, Limit, InLimit, Variable
-from ..comfies.ooflow import RepeatDate, Defstatus
-from ..parts.nodes import Family, Task
-from ..parts.times import (
+from geoglows_ecflow.workflow.builders.base import GEOGLOWSBaseBuilder
+from geoglows_ecflow.workflow.comfies.ooflow import Trigger, Defuser
+from geoglows_ecflow.workflow.comfies.ooflow import all_complete, Event, complete
+from geoglows_ecflow.workflow.comfies.ooflow import complete, Limit, InLimit, Variable
+from geoglows_ecflow.workflow.comfies.ooflow import RepeatDate, Defstatus
+from geoglows_ecflow.workflow.parts.nodes import Family, Task
+from geoglows_ecflow.workflow.parts.times import (
     t2t,
     Timer,
     CronDateRefresh,
     CronDataAvailability,
 )
-from ..comfies.dateandtime import Date, Time, TimeDelta, CalSeq
-from ..parts.admin import AdminFamily
-from ..parts.epilogs import DummyEpilog
-from ..parts.repeats import calseq_repeat
-from ..parts.packages import PackageInstallers
-from ..comfies.partition import partition
+from geoglows_ecflow.workflow.comfies.dateandtime import Date, TimeDelta, CalSeq
+from geoglows_ecflow.workflow.parts.admin import AdminFamily
+from geoglows_ecflow.workflow.parts.epilogs import DummyEpilog
+from geoglows_ecflow.workflow.parts.repeats import calseq_repeat
+from geoglows_ecflow.workflow.parts.packages import PackageInstallers
+from geoglows_ecflow.workflow.comfies.partition import partition
 
 
-from ..parts.nodes import Family, Task, NominalTime
+from geoglows_ecflow.workflow.parts.nodes import Family, Task, NominalTime
 
 
-class Builder(BaseBuilder):
+class Builder(GEOGLOWSBaseBuilder):
     
     comfies_minimum_version = "1.6.2"
     
-    ecflow_module = "geoglows_ecflow.workflow.suites.parts.nodes" # "geoglows_ecflow.workflow.suites.parts.nodes" # '..comfies.ooflow' # "geoglows_ecflow.workflow.parts.nodes"
+    ecflow_module = "geoglows_ecflow.workflow.parts.nodes"
 
     scripts = [
         "geoglows_ecflow/workflow/suites/scripts/rapid",

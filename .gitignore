@@ -7,6 +7,7 @@
 ecflow_home/
 *geoglows_forecast.def
 *.ecf.*
+*.cfg
 
 # pytest and coverage
 .coverage
