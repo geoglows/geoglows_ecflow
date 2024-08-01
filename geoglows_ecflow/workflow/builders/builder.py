@@ -49,6 +49,7 @@ class Builder(GEOGLOWSBaseBuilder):
         # get suite configuration parameters from the deployment config file
         suite_name = self.config.get("name")
         mode = self.config.get("mode", choices=["prod", "test", "rd"])
+        breakpoint()
         first_date = self.config.get("first_date", type=int)
         last_date = self.config.get("last_date", type=int, default="20300101")
         first_barrier = self.config.get(
@@ -383,3 +384,5 @@ class Builder(GEOGLOWSBaseBuilder):
         n_lag.add(n_daily_lag)
         n_daily_lag.add(DummyEpilog(done=barrier_ymd > lag_ymd))
         suite.add(n_barrier, n_main, n_lag)
+
+
