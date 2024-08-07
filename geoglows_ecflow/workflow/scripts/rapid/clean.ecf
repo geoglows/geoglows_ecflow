@@ -1,0 +1,37 @@
+#!/bin/bash -l
+
+%manual
+
+  DESCRIPTION
+
+    Clean forecast files from filesystem
+
+  OPERATORS
+
+    No Callout.
+    Set complete.
+    Inform Integration Team analyst next working day.
+
+  ANALYSTS
+
+    No known issues/solutions yet.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <newdate.h>
+
+
+oldest=$(newdate -D $ens_ymd -4)
+
+fcdir=$ens_workdir/fc
+mkdir -p $fcdir #in case it doesn't exist
+
+cd $fcdir
+for d in $(ls -d ??????????); do
+  if [[ ${d:0:8} -lt $oldest ]]; then
+    rm -rf $d
+  fi
+done
+cd -

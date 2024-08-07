@@ -1,0 +1,12 @@
+#!/bin/bash -l
+%manual
+
+%end
+
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <rapid_venv.h>
+
+python3 -m geoglows_ecflow.resources.day_one_forecast $ens_fcdir %VPU% $ens_workdir/forecast_records

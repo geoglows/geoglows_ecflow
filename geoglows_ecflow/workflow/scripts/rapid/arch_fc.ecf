@@ -1,0 +1,37 @@
+#!/bin/bash -l
+
+%manual
+
+  DESCRIPTION
+
+    Archive Forecasts into ECFS
+
+  OPERATORS
+
+    No Callout.
+    Set complete.
+    Inform Integration Team analyst next working day.
+
+  ANALYSTS
+
+    No known issues/solutions yet.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <ecfs.h>
+export ECUMASK=022
+emkdir -p $suite_archdir/$ens_year/$ens_month/$ens_ymd/
+for file in $ens_fcdir/Qout_*.tar.gz; do
+    ecp -o $file $suite_archdir/$ens_year/$ens_month/$ens_ymd/
+done
+
+for dir in $ens_workdir/forecast_records/*; do
+    cp $dir/forecastrecord*${ens_year}.nc ./
+done
+
+for file in *.nc; do
+    tar -rvf forecastrecord_${ens_ymd}.tar $file
+gzip -f forecastrecord_${ens_ymd}.tar
+ecp -o forecastrecord_${ens_ymd}.nc $suite_archdir/$ens_year/$ens_month/$ens_ymd/

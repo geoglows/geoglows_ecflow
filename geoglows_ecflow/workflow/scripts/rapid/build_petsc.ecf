@@ -1,0 +1,62 @@
+#!/bin/bash -l
+%manual
+
+    This task builds PETSC on systems that do not have PETSC available or where we require 
+    a specific version
+
+    Also installs Mpich and fblaslapack
+    
+  OPERATORS
+
+    Leave Aborted
+    Inform analyst during weekdays.
+
+
+  ANALYSTS
+
+     Should only run on a suite installation.
+     Contact person responsible during working hours.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+%includeonce <netcdf.h>
+
+srcdir=<?config.get('packages.petsc.srcdir')?>
+stage_dir=$suite_libdir/petsc
+
+mkdir -p $stage_dir
+cd $stage_dir
+if [ ${srcdir%%+*} = "git" ]; then
+
+    # Get sources
+    echo "detecting git"
+    giturl=${srcdir%%@*}
+    giturl=${giturl##*+}
+    gitbranch=${srcdir##*@}
+    git clone $giturl --branch $gitbranch --depth 1 $stage_dir
+    stage_info="files fetched from $giturl@$gitbranch"
+else
+    rsync -aip --chmod=ug+rw,o+r --exclude '.svn/*' $srcdir/* $stage_dir > stage_package_filelist
+fi
+
+cat stage_package_filelist
+stage_package_nfiles=$(cat stage_package_filelist | grep '^.[^d]' | wc -l)
+stage_info="$stage_package_nfiles files fetched from $srcdir"
+
+for tar in petsc-3.13.0.tar.gz mpich-3.3.2.tar.gz pkg-fblaslapack.tar.gz;do
+    tar -xf $tar
+done
+
+PETSC_DIR=$stage_dir/petsc-3.13.0
+cd petsc-3.13.0
+
+#/rapid_install_prereqs.sh
+python3 './configure' 'PETSC_DIR='$PWD 'PETSC_ARCH=linux-gcc-c' '--download-fblaslapack' '--download-mpich='../mpich-3.3.2.tar.gz '--with-cc=gcc' '--with-fc=gfortran' '--with-clanguage=c' '--with-debugging=0'
+
+#make $PETSC_DIR PETSC_ARCH=linux-gcc-c all
+#make $PETSC_DIR PETSC_ARCH=linux-gcc-c check
+make all
+make check
+

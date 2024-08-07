@@ -1,0 +1,65 @@
+#!/bin/bash -l
+%manual
+
+    Web Push Task
+
+    Pushes Forecast data to the web servers.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+
+mkdir -p $ens_fcdir
+mode=%MODE%
+use_backup=%USE_BACKUP_WEBHOST:0%
+
+if [[ $suite_mode == "prod" ]] || [[ $suite_mode == "test" ]];then
+
+    case $mode in
+
+        prod )
+            #Temporary while issues exist on prod cems machines
+            desthost=cems-dissemination-prod-10.ecmwf.int
+            alt_desthost=cems-dissemination-prod-20.ecmwf.int
+            destdir_root=/data/geoglows-prod/output/v2
+            ;;
+
+        test )
+
+            desthost=cems-dissemination-test-20.ecmwf.int
+            alt_desthost=cems-dissemination-test-10.ecmwf.int
+            destdir_root=/data/geoglows-test/output/v2
+            ;;
+        * )
+           true ;;
+    esac
+    if [[ $use_backup -gt 0 ]];then
+        hosts=$alt_desthost
+    else
+        hosts=$desthost
+    fi
+
+    for host in $hosts;do
+
+        srcdir=$ens_rapid_output
+        destdir=$destdir_root/forecasts
+
+        ssh efas@$host "umask 002; mkdir -p $destdir"
+        rsync -vahe ssh --progress $srcdir/Qout*.zarr efas@$host:$destdir/
+        ssh efas@$host "chmod 775 $destdir/*"
+
+        srcdir=$ens_workdir/forecast_records
+        destdir=$destdir_root/forecast-records
+
+        ssh efas@$host "umask 002; mkdir -p $destdir"
+        rsync -vahe ssh --progress $srcdir/* efas@$host:$destdir/
+        ssh efas@$host "chmod 775 $destdir/*"
+        
+        ssh efas@$host "chmod 775 -R $destdir_root"
+
+        ssh efas@$host "${destdir_root}/forecasts/cleanup_forecasts.sh"
+    done
+
+fi

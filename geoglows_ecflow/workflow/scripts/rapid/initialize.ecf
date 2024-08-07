@@ -1,0 +1,38 @@
+#!/bin/bash -l
+
+%manual
+
+  DESCRIPTION
+
+    Dearchive Restarts
+
+    Retrieves the Qinit files output from the previous forecast to initialise Geoglows
+
+  OPERATORS
+
+    No Callout.
+    Set complete.
+    Inform Integration Team analyst next working day.
+
+  ANALYSTS
+
+    No known issues/solutions yet.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <ecfs.h>
+%includeonce <netcdf.h>
+%includeonce <rapid.h>
+
+ecp $suite_iniarchdir/$ens_pyear/$ens_pmonth/$ens_pymd/init_files_${ens_basetime}.tar.gz ./
+tar xvf init_files_${ens_basetime}.tar.gz
+
+for dir in $(find . -mindepth 1 -maxdepth 1 -regextype posix-extended -type d -regex '.*/[0-9]{3}'); do
+    mkdir -p $suite_staticdata/input/$dir/
+    cp $dir/Qinit_${ens_basetime}.* $suite_staticdata/input/$dir/
+    if [[ ! -f $suite_staticdata/input/$dir/Qinit_${ens_basetime}.nc ]] && [[ -f $suite_staticdata/input/$dir/Qinit_${ens_basetime}.csv ]]; then
+      tst_run_conv_Qinit $suite_staticdata/input/$dir/Qinit_${ens_basetime}.csv $suite_staticdata/input/$dir/Qinit_${ens_basetime}.nc
+    fi
+done

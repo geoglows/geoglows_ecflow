@@ -1,0 +1,62 @@
+#!/bin/bash -l
+%manual
+
+    This task builds the rapid binary
+    
+  OPERATORS
+
+    Leave Aborted
+    Inform analyst during weekdays.
+
+
+  ANALYSTS
+
+     Should only run on a suite installation.
+     Contact person responsible during working hours.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+
+
+%includeonce <rapid.h>
+%includeonce <git.h>
+%includeonce <netcdf.h>
+
+srcdir=<?config.get('packages.model.srcdir')?>
+
+blddir=$suite_dir/build/rapid/
+PETSC_INSTALL_DIR=$suite_dir/lib/
+blddir_petsc=$suite_dir/build/petsc/
+rm -rf $blddir
+mkdir -p $blddir $PETSC_INSTALL_DIR $blddir_petsc
+
+if [ ${srcdir%%+*} = "git" ]; then
+
+    # Get sources
+    echo "detecting git"
+    giturl=${srcdir%%@*}
+    giturl=${giturl##*+}
+    gitbranch=${srcdir##*@}
+    git clone $giturl --branch $gitbranch --depth 1 $blddir
+    stage_info="files fetched from $giturl@$gitbranch"
+else
+    rsync -aip --chmod=ug+rw,o+r --exclude '.svn/*' --exclude '.git/*' $srcdir/* $blddir/
+fi
+
+
+cd $blddir
+
+%include <rapid.h>
+cd src
+make rapid
+
+mkdir -p $suite_dir/bin
+cp $blddir/src/rapid $suite_dir/bin/rapid
+chmod 755 $suite_dir/bin/rapid
+
+cd ../tst
+gfortran -o tst_run_conv_Qinit tst_run_conv_Qinit.f90 -I $TACC_NETCDF_INC -L $TACC_NETCDF_LIB -lnetcdff 
+cp tst_run_conv_Qinit $suite_dir/bin/
+chmod 755 $suite_dir/bin/tst_run_conv_Qinit

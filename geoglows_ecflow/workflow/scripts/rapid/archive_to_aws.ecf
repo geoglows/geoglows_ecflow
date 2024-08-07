@@ -1,0 +1,20 @@
+#!/bin/bash -l
+%manual
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <rapid_venv.h>
+
+#python3 -m geoglows_ecflow.resources.archive_to_aws $ens_fcdir $suite_staticdata/aws_config.yml
+
+# echo a text string to a config file
+export AWS_CONFIG_FILE=$suite_staticdata/geoglows-ecflow-aws-cli/config
+export AWS_SHARED_CREDENTIALS_FILE=$suite_staticdata/geoglows-ecflow-aws-cli/credentials
+aws s3 cp $ens_fcdir/output/Qout_$ens_basetime.zarr s3://geoglows-v2-forecasts/$ens_basetime.zarr --profile aws_odp --recursive --no-progress
+aws s3 cp $ens_workdir/forecast_records s3://geoglows-v2-forecast-products/forecast-records/$ens_year --profile aws_odp --recursive --exclude "*" --include "*_$ens_year.nc" --no-progress
+aws s3 cp $ens_fcdir/output/map_style_tables s3://geoglows-v2-forecast-products/map-tables/$ens_basetime --profile aws_odp --recursive --exclude "*" --include "*.csv" --no-progress
+
+%include <remove_conda.h>

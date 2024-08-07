@@ -1,0 +1,34 @@
+#!/bin/bash -l
+
+%manual
+
+DESCRIPTION
+
+  Install Geoglows Assets Files from ECFS
+
+ANALYSTS
+
+  No known problems/solutions yet.
+
+
+OPERATORS
+
+  Does not run as part of the normal suite.
+  Should only be run manually.
+  Check with Analyst, if no response set to complete.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <ecfs.h>
+
+ecp ec:/emos/geoglows2/static/assets_input.tar ./
+tar xvf assets_input.tar
+rm -rf $suite_staticdata/input
+mv input $suite_staticdata/
+
+ecp ec:/emos/geoglows2/static/assets_return_periods.tar ./
+tar xvf assets_return_periods.tar
+rm -rf $suite_staticdata/return_periods_dir
+mv return_periods_dir $suite_staticdata/

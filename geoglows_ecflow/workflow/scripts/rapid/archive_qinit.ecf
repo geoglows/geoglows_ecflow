@@ -1,0 +1,19 @@
+#!/bin/bash -l
+%manual
+
+    Create initial conditions for next run the rapid workflow
+
+%end
+
+%includeonce <ens.h>
+%includeonce <ecflow_bash.h>
+
+ls -al $ens_rapid_input
+cd $ens_rapid_input
+find . -type f -name "Qinit_${ens_basetime}.*" -print > Qinit_files
+
+if [[ $(cat Qinit_files | wc -l) -ne $(find . -mindepth 1 -maxdepth 1 -type d | wc -l) ]];then
+    echo "Fail, less Qinit files than expected"
+    false
+fi
+tar cvzf $ens_fcdir/init_files_$ens_basetime.tar.gz -C $ens_rapid_input --files-from=Qinit_files
