@@ -23,91 +23,130 @@ pip install -e .
 - nco>=5.1.8
 - ksh>=2020.0.0
 
-## geoglows_ecflow configuration file (config.yml)
+## geoglows_ecflow configuration file (config.cfg)
 
-```yaml
-# ecflow variables
-python_exec: /path/to/python
-ecflow_home: /path/to/ecflow_home
-ecflow_bin: /path/to/ecflow_client  # Required for local run
-workspace: /path/to/workspace
-local_run: false
-ecflow_entities:
-  suite:
-    name: geoglows_forecast
-    logs: /path/to/suite_log
-  family:
-    - name: rapid_forecast_family
-      suite: geoglows_forecast
-    - name: init_flows_family
-      suite: geoglows_forecast
-    - name: esri_table_family
-      suite: geoglows_forecast
-    - name: nc_to_zarr_family
-      suite: geoglows_forecast
-    - name: archive_to_aws_family
-      suite: geoglows_forecast
-    - name: day_one_family
-      suite: geoglows_forecast
-  task:
-    - name: forecast_prep_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-      suite: geoglows_forecast
-    - name: esri_table_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - VPU
-        - NCES_EXEC
-      suite: geoglows_forecast
-    - name: day_one_forecast_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - VPU
-        - OUTPUT_DIR
-      suite: geoglows_forecast
-    - name: rapid_forecast_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - JOB_ID
-        - RAPID_EXEC
-      suite: geoglows_forecast
-    - name: init_flows_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - VPU
-      suite: geoglows_forecast
-    - name: nc_to_zarr_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - VPU
-      suite: geoglows_forecast
-    - name: archive_to_aws_task
-      variables:
-        - PYSCRIPT
-        - WORKSPACE
-        - AWS_CONFIG
-      suite: geoglows_forecast
+```python
+    import os
+    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta
+    first_date=(datetime.now() - timedelta(1)).strftime('%Y%m%d')
+    vpu_list = ["125", "718"]
 
-# rapid variables
-rapid_exec: /path/to/rapid_exec
-rapid_exec_dir: /path/to/rapid_exec_dir
-rapid_subprocess_dir: /path/to/rapid_subprocess_dir
+    user = os.environ['USER']
+    home = os.environ['HOME']
+    account = os.environ['ECACCOUNT']
+    sthost='%STHOST:/ec/ws2'
 
-# forecast records variables
-forecast_records_dir: /path/to/forecast_records_dir
+    # Config file for production version of GEOGLOWS suite
 
-# nco variables
-nces_exec: /path/to/nces_exec
+    # ***root - not really configuration params but
+    # defined for convenience to avoid repetition.
+    # common root directory with package and suite sources
+    srcroot  = f"/home/{user}/path/to/workflow"
+    # root directory with datasets
 
-# aws variables
-aws_config: /path/to/aws_config.yml
+    mars_bond_id='251'
+
+    # where is the suite's source code
+    source = dict(
+    root = srcroot,
+    builder = 'builders.builder',
+    includes = 'scripts/troika:suites/scripts/tems:{includes}',
+    scripts = 'scripts/tems:{scripts}'
+    )
+
+    # suite name
+    name = f'egeoglows_{user}'
+
+    # where to deploy the suite
+    target = dict(
+    root = f'/home/{user}/path/to/target/' + name,
+    )
+
+    # where to run computations
+    jobs = dict(
+    manager = dict(
+        name='troika',
+    ),
+    root = f'{home}/ecflow_server/ecf_home',
+    limit = 26,
+    destinations = dict(
+        default = dict(
+        host = '%SCHOST:ab%',
+        bkup_host = '%SCHOST_BKUP%',
+        user = user,
+        queue = 'nf',
+        account = account,
+        sthost = sthost,
+        ),
+        parallel = dict(
+        host = '%SCHOST:ab%',
+        bkup_host = '%SCHOST_BKUP%',
+        user = user,
+        queue = 'nf',
+        ncpus = '12',
+        mem = '1000',
+        )
+    )
+    )
+
+    # Static Data
+    staticdata = f'/hpcperm/{user}/geoglows/{name}/assets'
+    # workroot directory of Geoglows project on the cluster
+    workroot = f'/hpcperm/{user}/geoglows/{name}'
+
+    # suite mode ('rd':research, 'test':test, 'prod':production)
+    mode          = 'test'
+
+    # ID of this experment
+    expver         = 'geoglows'
+    exparch        = f'ec:/{user}/geoglows/{name}' # Path on ECFS for Archiving
+    iniexparch     = f'ec:/emos/geoglows/geoglows' # Path on ECFS for init suite Archiving
+
+
+    mars_workers = '3'
+    # initial dates
+    first_date    = first_date
+    first_barrier = first_date
+
+    script_extension='.ecf'
+
+    # --------------------------------------------
+    # Configuration of EFAS software packages
+    # which are installed together with the suite.
+    # --------------------------------------------
+
+    # configurations of various packages
+    packages = dict(
+
+    model = dict(
+        srcdir = 'git+https://github.com/c-h-david/rapid.git@20210423',
+    ),
+
+    petsc = dict(
+        srcdir = srcroot + 'petsc_reqs',
+    ),
+
+    scripts = dict(
+        srcdir = srcroot + 'scripts',
+    ),
+
+    rapidpy = dict(
+        srcdir = 'git+https://github.com/geoglows/RAPIDpy@v2.7.0'
+    ),
+
+    geoglows_ecflow = dict(
+        srcdir = 'git+https://github.com/geoglows/geoglows_ecflow@v2.2.1'
+    ),
+
+    rtree = dict(
+        srcdir = 'git+https://github.com/Toblerity/rtree@0.9.4'
+    ),
+
+    basininflow = dict(
+        srcdir = 'git+https://github.com/geoglows/basininflow@v0.14.0'
+    ),
+    )
 ```
 
 ## AWS configuration file (aws_config.yml)
@@ -142,7 +181,7 @@ from geoglows_ecflow import geoglows_forecast_job, client
 subprocess.run(['bash', '/path/to/local_server_start.sh'])
 
 # Create definition
-geoglows_forecast_job.create("/path/to/config.yml")
+geoglows_forecast_job.create("/path/to/config.cfg")
 
 # Add definition to server
 client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
