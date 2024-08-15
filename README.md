@@ -26,126 +26,76 @@ pip install -e .
 ## geoglows_ecflow configuration file (config.cfg)
 
 ```python
-    import os
-    from datetime import datetime, timedelta
-    from datetime import datetime, timedelta
-    first_date=(datetime.now() - timedelta(1)).strftime('%Y%m%d')
-    vpu_list = ["125", "718"]
-
-    user = os.environ['USER']
-    home = os.environ['HOME']
-    account = os.environ['ECACCOUNT']
-    sthost='%STHOST:/ec/ws2'
-
-    # Config file for production version of GEOGLOWS suite
-
-    # ***root - not really configuration params but
-    # defined for convenience to avoid repetition.
-    # common root directory with package and suite sources
-    srcroot  = f"/home/{user}/path/to/workflow"
-    # root directory with datasets
-
+    name = 'suite_name'
+    srcroot = "/path/to/source"
+    first_date = first_barrier = 'YYYYMMDD'
+    vpu_list = []
     mars_bond_id='251'
+    staticdata = '/path/to/assets'
+    workroot = f'/path/to/workroot'
+    mode = 'test'  # suite mode ('rd':research, 'test':test, 'prod':production)
+    expver = 'geoglows'
+    exparch = '/path/to/archive'
+    iniexparch = '/path/to/init_archive'
+    mars_workers = '3'
+    script_extension = '.ecf'
 
-    # where is the suite's source code
+    # suite's source code
     source = dict(
     root = srcroot,
-    builder = 'builders.builder',
+    builder = 'geoglows_ecflow.workflow.builders.builder',
     includes = 'scripts/troika:suites/scripts/tems:{includes}',
     scripts = 'scripts/tems:{scripts}'
     )
 
-    # suite name
-    name = f'egeoglows_{user}'
-
-    # where to deploy the suite
+    # deploy location
     target = dict(
-    root = f'/home/{user}/path/to/target/' + name,
+        root = "/path/to/deploy_location",
     )
 
     # where to run computations
     jobs = dict(
-    manager = dict(
-        name='troika',
-    ),
-    root = f'{home}/ecflow_server/ecf_home',
-    limit = 26,
-    destinations = dict(
-        default = dict(
-        host = '%SCHOST:ab%',
-        bkup_host = '%SCHOST_BKUP%',
-        user = user,
-        queue = 'nf',
-        account = account,
-        sthost = sthost,
+        manager = dict(
+            name='troika',
         ),
-        parallel = dict(
-        host = '%SCHOST:ab%',
-        bkup_host = '%SCHOST_BKUP%',
-        user = user,
-        queue = 'nf',
-        ncpus = '12',
-        mem = '1000',
+        root = '/path/to/job_root',
+        limit = 26,
+        destinations = dict(
+            default = dict(
+                host = '%SCHOST:ab%',
+                bkup_host = '%SCHOST_BKUP%',
+                user = 'user_name',
+                queue = 'nf',
+                account = 'ECACCOUNT',
+                sthost = 'sthost',
+            ),
+            parallel = dict(
+                host = '%SCHOST:ab%',
+                bkup_host = '%SCHOST_BKUP%',
+                user = user,
+                queue = 'nf',
+                ncpus = '12',
+                mem = '1000',
+            )
         )
     )
-    )
-
-    # Static Data
-    staticdata = f'/hpcperm/{user}/geoglows/{name}/assets'
-    # workroot directory of Geoglows project on the cluster
-    workroot = f'/hpcperm/{user}/geoglows/{name}'
-
-    # suite mode ('rd':research, 'test':test, 'prod':production)
-    mode          = 'test'
-
-    # ID of this experment
-    expver         = 'geoglows'
-    exparch        = f'ec:/{user}/geoglows/{name}' # Path on ECFS for Archiving
-    iniexparch     = f'ec:/emos/geoglows/geoglows' # Path on ECFS for init suite Archiving
-
-
-    mars_workers = '3'
-    # initial dates
-    first_date    = first_date
-    first_barrier = first_date
-
-    script_extension='.ecf'
 
     # --------------------------------------------
     # Configuration of EFAS software packages
     # which are installed together with the suite.
     # --------------------------------------------
-
-    # configurations of various packages
     packages = dict(
+        model = dict(
+            srcdir = 'git+https://github.com/c-h-david/rapid.git@20210423',
+        ),
 
-    model = dict(
-        srcdir = 'git+https://github.com/c-h-david/rapid.git@20210423',
-    ),
+        petsc = dict(
+            srcdir = srcroot + 'petsc_reqs',
+        ),
 
-    petsc = dict(
-        srcdir = srcroot + 'petsc_reqs',
-    ),
-
-    scripts = dict(
-        srcdir = srcroot + 'scripts',
-    ),
-
-    rapidpy = dict(
-        srcdir = 'git+https://github.com/geoglows/RAPIDpy@v2.7.0'
-    ),
-
-    geoglows_ecflow = dict(
-        srcdir = 'git+https://github.com/geoglows/geoglows_ecflow@v2.2.1'
-    ),
-
-    rtree = dict(
-        srcdir = 'git+https://github.com/Toblerity/rtree@0.9.4'
-    ),
-
-    basininflow = dict(
-        srcdir = 'git+https://github.com/geoglows/basininflow@v0.14.0'
-    ),
+        scripts = dict(
+            srcdir = srcroot + 'scripts',
+        ),
     )
 ```
 
@@ -188,17 +138,4 @@ client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
 
 # Begin definition
 client.begin("definition_name")
-```
-
-## Run tests
-
-```bash
-cd geoglows_ecflow/
-pip install -e .[test]
-
-# run tests
-pytests tests/
-
-# run tests with coverage
-pytests --cov geoglows_ecflow tests/
 ```
