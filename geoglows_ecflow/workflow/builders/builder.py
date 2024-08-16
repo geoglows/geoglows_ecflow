@@ -49,7 +49,6 @@ class Builder(GEOGLOWSBaseBuilder):
         # get suite configuration parameters from the deployment config file
         suite_name = self.config.get("name")
         mode = self.config.get("mode", choices=["prod", "test", "rd"])
-        breakpoint()
         first_date = self.config.get("first_date", type=int)
         last_date = self.config.get("last_date", type=int, default="20300101")
         first_barrier = self.config.get(
