@@ -31,3 +31,6 @@ include = ["geoglows_ecflow*"]
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+gdeploy = "geoglows_ecflow.bin.gdeploy:main"
