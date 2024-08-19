@@ -1,0 +1,91 @@
+ #!/bin/bash -l
+%manual
+
+This task will automatically set the toggles of a suite to an expected set based upon some variables
+in order to prevent some failures that will occur where the user attempts to write where they cannot etc.
+
+
+
+Set / clear the attached events to enable/disable various features:
+
+
+'catchup' -- set it when the 'main' family is in catchup state.
+          Setting this event disables watchdog tasks which
+          monitor critical nodes in main.
+
+
+'no_web' -- set it to disable pushing products to glofas-dissemination-prod.ecmwf.int
+          web server. By default, this should only be enabled in the operational suite run by emos. 
+
+
+'no_webtest' -- set it to disable pushing products to glofas-dissemination.ecmwf.int
+          web server to the test folder. By default, this should only be enabled in the esuite run by emos. 
+
+'no_diss' -- disables the post processing computation tasks and associated web push and archiving tasks.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+
+if [[ $USER == 'emos' ]] && [[ $suite_mode == 'ecprod' ]];then
+
+cat > mail_message << EOF
+The %SUITE% toggles task has set the following toggles in order to prevent 
+overwriting the test and stage web insfrastructure.
+
+Please double check toggles are set as you expected.
+EOF
+
+
+    ecflow_client --event no_webtest
+    mailx -s "%SUITE% toggles set automatically" $USER < mail_message
+
+elif [[ $USER == 'emos' ]] && [[ $suite_mode == 'ectest' ]];then
+
+cat > mail_message << EOF
+The %SUITE% toggles task has set the following toggles in order to prevent 
+overwriting the production and stage web insfrastructure.
+
+SOS, Operational Filesystem sync, Logs backup to ECFS, Dissemination, mars archiving are also disabled.
+Catchup mode enabled to disable production alerts.
+
+    ecflow_client --event no_web
+    ecflow_client --event no_webtest
+    ecflow_client --event no_diss
+
+Please double check toggles are set as you expected.
+EOF
+
+
+    ecflow_client --event no_web
+    ecflow_client --event no_webtest
+    ecflow_client --event no_diss
+    mailx -s "%SUITE% toggles set automatically" $USER < mail_message
+else
+
+cat > mail_message << EOF
+The %SUITE% toggles task has set the following toggles in order to prevent 
+overwriting the test and stage web insfrastructure.
+
+SOS, Operational Filesystem sync, Logs backup to ECFS, Dissemination, mars archiving are also disabled.
+Catchup mode enabled to disable production alerts.
+
+    ecflow_client --event no_web
+    ecflow_client --event no_webtest
+    ecflow_client --event no_diss
+
+Please double check toggles are set as you expected.
+EOF
+
+
+    ecflow_client --event no_web
+    ecflow_client --event no_webtest
+    ecflow_client --event no_diss
+
+    mailx -s "%SUITE% toggles set automatically" $USER < mail_message
+fi
+
+
+
+

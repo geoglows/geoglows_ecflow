@@ -1,0 +1,15 @@
+#!/bin/bash -l
+%manual
+
+%end
+
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <rapid_venv.h>
+
+postprocess_rapid_output -d $ens_fcdir/output
+python3 -m geoglows_ecflow.resources.netcdf_to_zarr $ens_fcdir
+
+%include <remove_conda.h>

@@ -1,0 +1,16 @@
+#!/bin/bash -l
+%manual
+
+%end
+
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <rapid_venv.h>
+
+ln -snf $suite_staticdata/return_periods_dir $ens_fcdir/return_periods_dir
+
+python3 -m geoglows_ecflow.resources.generate_esri_table $ens_fcdir %VPU%
+
+%include <remove_conda.h>

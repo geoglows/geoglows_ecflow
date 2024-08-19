@@ -1,0 +1,30 @@
+#!/bin/bash -l
+
+%manual
+
+  DESCRIPTION
+
+    Archive Restarts
+
+  OPERATORS
+
+    No Callout.
+    Set complete.
+    Inform Integration Team analyst next working day.
+
+  ANALYSTS
+
+    No known issues/solutions yet.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <ecfs.h>
+
+export ECUMASK=002
+emkdir -p $suite_archdir/$ens_year/$ens_month/$ens_ymd/
+ecp -o $ens_fcdir/init_files_$ens_basetime.tar.gz $suite_archdir/$ens_year/$ens_month/$ens_ymd/
+
+
+

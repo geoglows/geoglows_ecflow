@@ -1,0 +1,121 @@
+#!/bin/bash -l
+%manual
+
+     GLOFAS External Customer Data Extraction
+
+     Retrieves MSL,10u,10v,precip and transfers to Customer.
+     Retrieves Runoff for HRES and ENS, Converts to NetCDF and transfers a tar to the Customer.
+
+     Transfers via ECPDS
+
+     Operators :
+
+     Try a few reruns.
+     No Callout, please create JIRA Ticket for Suite Operations
+
+
+%end
+
+%include <ecflow_bash.h>
+%includeonce <sim.h>
+%includeonce <cdo.h>
+%includeonce <eccodes.h>
+%includeonce <python3.h>
+
+nworkers=%NWORKERS%
+worker=%WORKER%
+nmember=$(( ens_nmembers - 1 ))
+members=$(echo $(seq 0 $nmember) | tr ' ' '\n' | partition $nworkers $worker)
+members_to_check=$members
+first_member=$(echo "$members" | head -1)
+if [[ $first_member == 0 ]]; then
+  # remove first member (control forecast) from the list
+  members=$(echo "$members" | sed 1d)
+fi
+ens_members=$(strjoin / $members)
+
+
+
+export MARS_MULTITARGET_STRICT_FORMAT=1
+mkdir -p ${sim_fcdir}
+
+if [[ $first_member == 0 ]]; then
+
+#####################
+# Retrieve the ENS (first control then the 50 members)
+#####################
+
+param=205
+
+mars <<EOF
+retrieve,
+        date=$ens_ymd,
+        time=$ens_base,
+        stream=enfo,
+        $ens_mars_expver,
+        step=0/to/144/by/3,
+        levtype=sfc,
+        class=od,
+        type=cf,
+        param=205.128,
+        grid=F1280,
+        target="tmp1.grb"
+
+retrieve,
+        date=$ens_ymd,
+        time=$ens_base,
+        stream=enfo,
+        $ens_mars_expver,
+        step=150/to/360/by/6,
+        levtype=sfc,
+        class=od,
+        type=cf,
+        param=205.128,
+        grid=F1280,
+        target="tmp2.grb"
+EOF
+
+cat tmp1.grb tmp2.grb > 51.runoff
+rm -rf $sim_fcdir/51.runoff.nc
+cdo -s -R -f nc4 -t ecmwf -copy 51.runoff $sim_fcdir/51.runoff.nc
+fi
+
+
+mars<<EOF
+retrieve,
+        date=$ens_ymd,
+        time=$ens_base,
+        stream=enfo,
+        $ens_mars_expver,
+        step=0/to/144/by/3,
+        levtype=sfc,
+        class=od,
+        type=pf,
+        number=$ens_members,
+        param=205.128,
+        grid=F1280,
+        target="tmp1.grb"
+
+retrieve,
+        date=$ens_ymd,
+        time=$ens_base,
+        stream=enfo,
+        $ens_mars_expver,
+        step=150/to/360/by/6,
+        levtype=sfc,
+        class=od,
+        type=pf,
+        number=$ens_members,
+        param=205.128,
+        grid=F1280,
+        target="tmp2.grb"
+EOF
+
+cat tmp1.grb tmp2.grb > all.runoff
+grib_copy all.runoff "[perturbationNumber].runoff"
+rm -f all.runoff
+
+for file in *.runoff;do
+	mem=${file%%.*}
+	cdo -s -R -f nc4 -t ecmwf -copy $file $sim_fcdir/$mem.runoff.nc
+done

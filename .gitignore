@@ -7,6 +7,7 @@
 ecflow_home/
 *geoglows_forecast.def
 *.ecf.*
+*.cfg
 
 # pytest and coverage
 .coverage
@@ -31,7 +32,6 @@ eggs/
 .eggs/
 lib/
 lib64/
-parts/
 sdist/
 var/
 wheels/

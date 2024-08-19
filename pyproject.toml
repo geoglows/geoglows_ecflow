@@ -1,6 +1,6 @@
 [project]
 name = "geoglows_ecflow"
-version = "3.0.3"
+version = "3.1.1"
 description = "ECFLOW RAPID workflow for GEOGloWS"
 authors = [
     { name = "Michael Souffront", email = "msouffront@aquaveo.com" },
@@ -17,15 +17,10 @@ dependencies = [
     "zarr>=2.16.1",
     "boto3>=1.28.65",
     "basininflow>=0.13.0",
-    # "RAPIDpy>=2.7.0",  # Install from BYU Hydroinformatics GitHub account
-    # "ecflow>=5.11.3",  # Install with conda
 ]
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
-
-[project.optional-dependencies]
-test = ["pytest>=7.4.2", "pytest-mock>=3.11.1", "pytest-cov>=4.1.0"]
 
 [tool.coverage.report]
 show_missing = true
@@ -36,3 +31,6 @@ include = ["geoglows_ecflow*"]
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+gdeploy = "geoglows_ecflow.bin.gdeploy:main"

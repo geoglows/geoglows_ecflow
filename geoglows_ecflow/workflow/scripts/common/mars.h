@@ -1,0 +1,18 @@
+MARS_BOND_IDENT=<?config.get('mars_bond_id',type=int,default=0)?>
+if [[ $MARS_BOND_IDENT -gt 0 ]];
+then
+  export MARS_FOR_BOND_DATASET=$MARS_BOND_IDENT
+fi
+if [[ %BOLOGNA_DHS_DRY_RUN_RETRIEVE:0% != 0 ]]; then
+   export BOLOGNA_DHS_DRY_RUN_RETRIEVE=1
+fi
+if [[ %BOLOGNA_MARS_DOUBLE_ARCHIVE_COPY:0% != 0 ]]; then
+    export BOLOGNA_MARS_DOUBLE_ARCHIVE_COPY=1
+fi
+if [[ %BOLOGNA_MARS_DOUBLE_ARCHIVE_PROD:0% != 0 ]]; then
+    export BOLOGNA_MARS_DOUBLE_ARCHIVE_PROD=1
+fi
+if [[ %BOLOGNA_ECFS_DOUBLE_ARCHIVE_COPY:0% != 0 ]]; then
+    export BOLOGNA_ECFS_DOUBLE_ARCHIVE_COPY=1
+fi
+

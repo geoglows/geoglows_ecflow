@@ -1,0 +1,30 @@
+#!/bin/bash -l
+%manual
+
+%end
+
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <rapid_venv.h>
+
+python3 -m geoglows_ecflow.resources.combine_esri_tables $ens_fcdir
+
+# Do not zip. it is long and unnecessary
+#cd $ens_rapid_output/map_style_tables/
+#for file in *.csv; do
+#    tar -rvf ${ens_fcdir}/mapstyletable_${ens_basetime}.tar $file
+#done
+#gzip -f ${ens_fcdir}/mapstyletable_${ens_basetime}.tar
+#
+## create VPU archive (see diss.ecf)
+#cd $ens_rapid_output
+#for path in $(find $ens_rapid_input/ -mindepth 1 -maxdepth 1 -type d); do
+#    for file in Qout_*.nc; do
+#        basename $path | xargs -I {} tar -rvf $ens_fcdir/Qout_{}_${ens_basetime}.tar $file;
+#    done
+#    basename $path | xargs -I {} gzip -f $ens_fcdir/Qout_{}_${ens_basetime}.tar
+#done
+
+%include <remove_conda.h>

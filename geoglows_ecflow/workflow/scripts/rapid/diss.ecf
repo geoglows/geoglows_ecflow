@@ -1,0 +1,49 @@
+#!/bin/bash -l
+
+%manual
+
+DESCRIPTION
+
+  Disseminate Glofas Extras Files to ECPDS
+
+ANALYSTS
+
+  No known problems/solutions yet.
+
+
+OPERATORS
+
+  Try re-running couple of times.
+  Call Integration Team analyst.
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <ens.h>
+%includeonce <ecpds.h>
+
+context=%CONTEXT%
+
+
+##################
+#Tar and ftp the file
+
+
+
+case $context in
+
+    input)
+        runoff_file=Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz
+        tar czf $runoff_file $ens_fcdir/*.runoff.nc
+        ecpds -echost aux -destination CEMS_Flood_Glofas -force -lifetime 7d -source Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz -target /tcyc/Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz
+        ecpds -echost aux -destination CEMS_Flood_Rapid -force -lifetime 7d -source Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz -target Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz
+        ;;
+
+#    rapid)
+#          for file in $ens_fcdir/*.tar.gz;do
+              #ecpds -echost aux -destination CEMS_Flood_Glofas -force -lifetime 7d -source $file -target /tcyc/rapid_${ens_ymd}_${ens_base}/${file##*/}
+              #ecpds -echost aux -destination CEMS_Flood_Rapid -force -lifetime 7d -source $file -target rapid_${ens_ymd}_${ens_base}/${file##*/}
+#          done
+
+#    ;;
+esac

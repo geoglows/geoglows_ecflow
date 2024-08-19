@@ -1,0 +1,107 @@
+#!/bin/bash -l
+%includeonce <ecflow_bash.h>
+%includeonce <suite.h>
+%includeonce <deploy_config.h>
+%includeonce <comfies.h>
+
+%includeonce <git.h>
+
+# Where is the source code of the package.
+# This path must be defined by the user
+# in ~/.comfies/sdeploy/<SuiteConfigFile>
+src_dir=$(coget "packages.%PACKAGE%.srcdir")
+src_dir=$(echo $src_dir | expanduser | expandvars)
+
+
+# ---------------------------------------------------------------
+# Fetch package source into the staging area
+# ---------------------------------------------------------------
+
+stage_dir=$suite_dir/build/%PACKAGE%
+if [ ${src_dir%%+*} = "git" ]; then
+
+    # Get sources
+    echo "detecting git"
+    giturl=${src_dir%%@*}
+    giturl=${giturl##*+}
+    gitbranch=${src_dir##*@}
+    rm -rf $stage_dir
+    git clone $giturl --branch $gitbranch --depth 1 $stage_dir
+    stage_info="files fetched from $giturl@$gitbranch"
+
+else
+
+    mkdir -p $stage_dir
+    rsync -aip --chmod=ug+rw,o+r --exclude '.svn/*' $src_dir/* $stage_dir > stage_package_filelist
+    cat stage_package_filelist
+    stage_package_nfiles=$(cat stage_package_filelist | grep '^.[^d]' | wc -l)
+    stage_info="$stage_package_nfiles files fetched from $src_dir"
+
+fi
+
+# Get installer
+cd $(dirname $deploy_config_path) # allow relative path to the source
+src_root=$(coget "source.root")
+installer_dir=$src_root/installers/%PACKAGE%
+if [ -d $installer_dir ] || ssh ${installer_dir%%:*} [ -d ${installer_dir##*:} > /dev/null 2>&1  ] ; then # check if directory host:dir or dir exists
+    echo "Getting installer from $installer_dir"
+    rsync -aip --chmod=ug+rw,o+r $installer_dir/* $stage_dir > $TMPDIR/stage_installer_filelist
+    stage_installer_nfiles=$(cat $TMPDIR/stage_installer_filelist | grep '^.[^d]' | wc -l)
+    stage_info="$stage_info and $stage_installer_nfiles files from $installer_dir"
+else
+    echo "Warning! Installer directory $installer_dir not found! Assuming git repository contains a Makefile."
+fi
+cd -
+
+ecflow_client --label=stage $stage_info
+
+
+# ----------------------------------------------------------------
+# Preprocess package installation scripts
+# ----------------------------------------------------------------
+
+cd $stage_dir
+
+# Installation scripts may have "config.get(blabla)" directives
+# in them - here they are preprocessed with 'copp' tool from
+# comfies package to replace these directives with values.
+
+installation_scripts='
+_setup_
+Makefile
+Makefile.inc
+_configure_
+'
+
+for f in $(ls $installation_scripts 2>/dev/null); do
+    echo "preprocessing installation script $f"
+    copp $f > $f.tmp
+    cat $f.tmp
+%nopp
+[[ ! -z "$STHOST" ]] && sed -i 's!%STHOST.*%!${STHOST}!g' $f.tmp
+%end
+    mv $f.tmp $f
+    cat $f
+done
+# ----------------------------------------------------------------
+# Run the package installation
+# ----------------------------------------------------------------
+
+# Include an optional _setup_ file from the package.
+# This can be used to set up package-specific
+# environment which may be needed during installation.
+
+if [[ -f _setup_ ]]; then
+. '_setup_'
+fi
+%includeonce <rapid_venv.h>
+
+dest_dir=$suite_dir/lib/%PACKAGE%
+make uninstall PREFIX=$dest_dir LIBDIR=$suite_libdir
+make install PREFIX=$dest_dir LIBDIR=$suite_libdir > install_log
+cat install_log
+install_nfiles=$(cat install_log | grep '^installing ' | wc -l)
+%include <remove_conda.h>
+ecflow_client --label=install "$install_nfiles files installed in $dest_dir"
+
+cd -
