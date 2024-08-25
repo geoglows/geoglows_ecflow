@@ -257,7 +257,7 @@ def update_forecast_records(
 
         # set the time variable attributes
         record.variables["time"].setncattr(
-            "units", f"hours since {year}0101 00:00:00"
+            "units", f"hours since {year}-01-01 00:00:00"
         )
 
         # calculate the number of 3-hourly timesteps that will occur this year
