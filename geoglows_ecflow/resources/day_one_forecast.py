@@ -8,6 +8,9 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import netCDF4 as nc
+import dask
+from numcodecs import Blosc
+
 
 
 def merge_forecast_qout_files(rapid_output: str, vpu: str or int):
