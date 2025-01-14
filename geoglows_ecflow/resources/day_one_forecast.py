@@ -10,10 +10,11 @@ import xarray as xr
 import netCDF4 as nc
 import dask
 from numcodecs import Blosc
+import numcodecs
 
 
 
-def merge_forecast_qout_files(rapid_output: str, vpu: str or int):
+def merge_forecast_qout_files(rapid_output: str, vpu: str | int):
     # list the forecast files
     prediction_files = sorted(
         glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
@@ -313,7 +314,9 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
     logging.info("Converting the forecast record to zarr")
     zarr_path = record_path.replace(".nc", ".zarr")
     record_nc = xr.open_dataset(record_path)
-
+    
+    #alternatively, we can not use dask and just write the zarr file
+    #this code took almost entirely from the netcdf_to_zarr.py file
     with dask.config.set(**{
         'array.slicing.split_large_chunks': False,
         # set the max chunk size to 5MB
@@ -332,8 +335,12 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
     }):
         #set compressing information
         logging.info("Configuring compression")
+        
+        #if we get rid of dask, we can get rid of the compressor
+        #the compressor throws an error, but it works fine without it
         compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
         encoding = {'Qout': {"compressor": compressor}}
+        
         logging.info("Writing to zarr")
         (
             record_nc
@@ -346,6 +353,7 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
                         zarr_path,
                         consolidated=True,
                         encoding=encoding,
+                        mode = 'w'
                     )
                 )
 
