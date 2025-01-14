@@ -296,8 +296,58 @@ def update_forecast_records(
     # save and close the netcdf
     record_netcdf.sync()
     record_netcdf.close()
+    netcdf_forecast_record_to_zarr(record_path)
 
     return
+def netcdf_forecast_record_to_zarr(record_path) -> None:
+    """
+    Converts the netcdf forecast record to zarr.
+
+    Args:
+        record_path (str): Path to the forecast_record netcdf file.
+    """
+    
+    logging.info("Converting the forecast record to zarr")
+    zarr_path = record_path.replace(".nc", ".zarr")
+    record_nc = xr.open_dataset(record_path)
+
+    with dask.config.set(**{
+        'array.slicing.split_large_chunks': False,
+        # set the max chunk size to 5MB
+        'array.chunk-size': '40MB',
+        # use the threads scheduler
+        'scheduler': 'threads',
+        # set the maximum memory target usage to 90% of total memory
+        'distributed.worker.memory.target': 0.80,
+        # do not allow spilling to disk
+        'distributed.worker.memory.spill': False,
+        # specify the amount of resources to allocate to dask workers
+        'distributed.worker.resources': {
+            'memory': 3e9,  # 1e9=1GB, this is the amount per worker
+            'cpu': os.cpu_count(),  # num CPU per worker
+        }
+    }):
+        #set compressing information
+        logging.info("Configuring compression")
+        compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
+        encoding = {'Qout': {"compressor": compressor}}
+        logging.info("Writing to zarr")
+        (
+            record_nc
+            .drop_vars(["lat", "lon"])
+                    .chunk({
+                        "time": -1,
+                        "rivid": "auto"
+                    })
+                    .to_zarr(
+                        zarr_path,
+                        consolidated=True,
+                        encoding=encoding,
+                    )
+                )
+
+    record_nc.close()
+    logging.info("Done")
 
 
 if __name__ == "__main__":
