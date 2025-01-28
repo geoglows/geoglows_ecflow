@@ -333,11 +333,11 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
             'cpu': os.cpu_count(),  # num CPU per worker
         }
     }):
-        #set compressing information
+    #set compressing information
         logging.info("Configuring compression")
         
         #if we get rid of dask, we can get rid of the compressor
-        #the compressor throws an error, but it works fine without it
+        #the compressor throws an error for version 3 so specify version 2
         compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
         encoding = {'Qout': {"compressor": compressor}}
         
@@ -353,11 +353,12 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
                         zarr_path,
                         consolidated=True,
                         encoding=encoding,
-                        mode = 'w'
+                        mode = 'w',
+                        zarr_version=2
                     )
                 )
 
-    record_nc.close()
+        record_nc.close()
     logging.info("Done")
 
 
