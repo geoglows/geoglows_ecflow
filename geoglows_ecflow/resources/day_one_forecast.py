@@ -10,7 +10,6 @@ import xarray as xr
 import netCDF4 as nc
 import dask
 from numcodecs import Blosc
-import numcodecs
 
 
 
@@ -315,8 +314,6 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
     zarr_path = record_path.replace(".nc", ".zarr")
     record_nc = xr.open_dataset(record_path)
     
-    #alternatively, we can not use dask and just write the zarr file
-    #this code took almost entirely from the netcdf_to_zarr.py file
     with dask.config.set(**{
         'array.slicing.split_large_chunks': False,
         # set the max chunk size to 5MB
