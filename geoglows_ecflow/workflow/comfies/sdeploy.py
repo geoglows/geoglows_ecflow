@@ -28,7 +28,6 @@ import datetime
 import subprocess
 import contextlib
 import logging as log
-import imp
 import importlib
 import argparse
 
@@ -60,7 +59,7 @@ from geoglows_ecflow.workflow.comfies.templating import (
     TemplateError,
 )
 from geoglows_ecflow.workflow.comfies.sjob import SshHost
-from pkg_resources import parse_version
+from packaging.version import parse
 from geoglows_ecflow.workflow.comfies.version import __version__
 from geoglows_ecflow.workflow.comfies.py2 import basestring
 import ecflow
@@ -371,7 +370,10 @@ def module_exists(name, path):
     """
     for x in name.split("."):
         try:
-            file, path, descr = imp.find_module(x, [path])
+            spec = importlib.util.find_spec(x, [path])
+            if spec is None:
+                return False
+            path = spec.origin
         except ImportError:
             return False
     return path
@@ -772,14 +774,10 @@ class BaseBuilder(object):
 
     def __init__(self, config):
         globals()["ecflow"] = importlib.import_module(self.ecflow_module)
-        if parse_version(self.comfies_minimum_version) > parse_version(
-            __version__
-        ):
+        if parse(self.comfies_minimum_version) > parse(__version__):
             raise ComfiesVersionError(
                 "This suite needs version {}"
-                " or later of comfies package".format(
-                    self.comfies_minimum_version
-                )
+                " or later of comfies package".format(self.comfies_minimum_version)
             )
 
         # create minimal suite

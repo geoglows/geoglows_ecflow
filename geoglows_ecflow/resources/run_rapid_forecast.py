@@ -20,7 +20,7 @@ def rapid_forecast_exec(
     mp_execute_directory: str,
     subprocess_forecast_log_dir: str,
 ) -> None:
-    """Runs GEOGloWS RAPID forecast.
+    """Runs GEOGLOWS RAPID forecast.
 
     Args:
         workspace (str): Path to rapid_run.json.
@@ -80,8 +80,7 @@ def rapid_forecast_exec(
 
         # prepare ECMWF file for RAPID
         rapid_logger.info(
-            f"Running RAPID downscaling for vpu: {vpucode}, "
-            f"ensemble: {ens_number}."
+            f"Running RAPID downscaling for vpu: {vpucode}, " f"ensemble: {ens_number}."
         )
 
         # set up RAPID manager
@@ -98,12 +97,8 @@ def rapid_forecast_exec(
             weight_table = case_insensitive_file_search(
                 rapid_vpu_input_dir, r"weight_ifs_48r1.*?\.csv"
             )
-            k_file = case_insensitive_file_search(
-                rapid_vpu_input_dir, r"k\.csv"
-            )
-            x_file = case_insensitive_file_search(
-                rapid_vpu_input_dir, r"x\.csv"
-            )
+            k_file = case_insensitive_file_search(rapid_vpu_input_dir, r"k\.csv")
+            x_file = case_insensitive_file_search(rapid_vpu_input_dir, r"x\.csv")
         except Exception as e:
             rapid_logger.critical(f"input file not found: {e}")
             raise
@@ -119,9 +114,7 @@ def rapid_forecast_exec(
 
         # check for forcing flows
         try:
-            Qfor_file = case_insensitive_file_search(
-                rapid_vpu_input_dir, r"qfor\.csv"
-            )
+            Qfor_file = case_insensitive_file_search(rapid_vpu_input_dir, r"qfor\.csv")
             for_tot_id_file = case_insensitive_file_search(
                 rapid_vpu_input_dir, r"for_tot_id\.csv"
             )
@@ -157,9 +150,7 @@ def rapid_forecast_exec(
                     datetime.datetime.strptime(date, "%Y%m%d%H")
                     - datetime.timedelta(hours=day)
                 ).strftime("%Y%m%d%H")
-                qinit_file = os.path.join(
-                    rapid_vpu_input_dir, f"Qinit_{past_date}.nc"
-                )
+                qinit_file = os.path.join(rapid_vpu_input_dir, f"Qinit_{past_date}.nc")
                 BS_opt_Qinit = qinit_file and os.path.exists(qinit_file)
                 if BS_opt_Qinit:
                     break
@@ -176,10 +167,7 @@ def rapid_forecast_exec(
                     BS_opt_Qinit = qinit_file and os.path.exists(qinit_file)
                 except Exception:
                     print("Failed to initialize from Seasonal Averages.")
-                    print(
-                        f"WARNING: {qinit_file} not found. "
-                        "Not initializing ..."
-                    )
+                    print(f"WARNING: {qinit_file} not found. " "Not initializing ...")
                     qinit_file = ""
 
         # Create inflow directory

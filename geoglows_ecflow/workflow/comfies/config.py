@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 import os
 import sys
-import imp
+import importlib
 import collections.abc as collections
 
 import datetime
@@ -105,7 +105,14 @@ class PythonConfigFile(ConfigFile):
         try:
             old_dont_write_bytecode = sys.dont_write_bytecode
             sys.dont_write_bytecode = True
-            data = imp.load_source('_sdeploy_config_'+path, path).__dict__
+            module_name = "_gdeploy_config_" + os.path.basename(path).replace('.', '_')
+            loader = importlib.machinery.SourceFileLoader(module_name, path)
+            spec = importlib.util.spec_from_loader(module_name, loader)
+            if spec is None:
+                raise ImportError(f"Cannot load config from {path}")
+            module = importlib.util.module_from_spec(spec)
+            loader.exec_module(module)
+            data = module.__dict__
             sys.dont_write_bytecode = old_dont_write_bytecode
         except IOError as e:
             msg = path + ": " + e.strerror

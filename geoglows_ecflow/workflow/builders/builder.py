@@ -28,13 +28,13 @@ class Builder(GEOGLOWSBaseBuilder):
     ecflow_module = "geoglows_ecflow.workflow.parts.nodes"
 
     scripts = [
-        "geoglows_ecflow/workflow/scripts/rapid",
-        "geoglows_ecflow/workflow/scripts/common",
+        "geoglows_ecflow/geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/geoglows_ecflow/workflow/scripts/common",
     ]
 
     includes = [
-        "geoglows_ecflow/workflow/scripts/rapid",
-        "geoglows_ecflow/workflow/scripts/common",
+        "geoglows_ecflow/geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/geoglows_ecflow/workflow/scripts/common",
     ]
 
     def build(self):
@@ -148,6 +148,7 @@ class Builder(GEOGLOWSBaseBuilder):
         n_make.add_inlimit("make")
 
         vpu_list = self.config.get("vpu_list", type=list, default=[])
+        vpu_list = [str(v) for v in vpu_list]
 
         n_make.add(Variable("YMD", first_date))
         suite.add(n_make, n_admin)
@@ -283,7 +284,7 @@ class Builder(GEOGLOWSBaseBuilder):
 
             n_vpus = Family("vpu_list")
             for vpu in vpu_list:
-                n_vpu = Family(vpu.replace("-", "_"))
+                n_vpu = Family(vpu)
                 n_vpu.add_variable("VPU", vpu)
                 n_vpu.add_task("nco_calc")
                 n_vpu.add_task("comp_init").add_trigger(

@@ -1,7 +1,7 @@
-# ECFLOW RAPID workflow for GEOGloWS
+# ECFLOW RAPID workflow for GEOGLOWS
 
-![GEOGloWS VPUCode Coverage](images/geoglows_vpucode_coverage.png)
-*Coverage of GEOGloWS VPUCode basins. Source: [Riley Hales](mailto:rchales@byu.edu).*
+![GEOGLOWS VPUCode Coverage](images/geoglows_vpucode_coverage.png)
+*Coverage of GEOGLOWS VPUCode basins. Source: [Riley Hales](mailto:rchales@byu.edu).*
 
 ## Installation
 
@@ -125,13 +125,13 @@ ecflow_start.sh -d /path/to/ecflow_home
 
 ```Python
 import subprocess
-from geoglows_ecflow import geoglows_forecast_job, client
+from geoglows_ecflow import client
 
 # Start server
-subprocess.run(['bash', '/path/to/local_server_start.sh'])
+subprocess.run(["bash", "/path/to/local_server_start.sh"])
 
 # Create definition
-geoglows_forecast_job.create("/path/to/config.cfg")
+subprocess.run(["gdeploy", "/path/to/geoglows_workflow.cfg"])
 
 # Add definition to server
 client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
