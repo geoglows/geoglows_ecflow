@@ -122,6 +122,12 @@ ecflow_start.sh -d /path/to/ecflow_home
 ```
 
 ## Local run example
+```Bash
+ecflow_server &
+gdeploy -c path/to/geoglows_workflow.cfg
+ecflow_client --load /path/to/definition.def
+ecflow_client --begin /definition
+```
 
 ```Python
 import subprocess

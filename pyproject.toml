@@ -34,3 +34,4 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 gdeploy = "geoglows_ecflow.bin.gdeploy:main"
+sjob = "geoglows_ecflow.bin.sjob:main"
