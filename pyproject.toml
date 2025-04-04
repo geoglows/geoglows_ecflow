@@ -28,6 +28,9 @@ show_missing = true
 [tool.setuptools.packages.find]
 include = ["geoglows_ecflow*"]
 
+[tool.setuptools.package-data]
+"geoglows_ecflow.workflow.comfies.data" = ["sjob/**"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

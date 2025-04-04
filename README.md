@@ -19,8 +19,6 @@ pip install -e .
 ## Non-Python Dependencies
 
 - rapid>=20210423
-- ecflow>=5.11.3
-- nco>=5.1.8
 - ksh>=2020.0.0
 
 ## geoglows_ecflow configuration file (config.cfg)
@@ -55,28 +53,11 @@ pip install -e .
 
     # where to run computations
     jobs = dict(
-        manager = dict(
-            name='troika',
-        ),
         root = '/path/to/job_root',
-        limit = 26,
+        manager = 'sjob',
         destinations = dict(
-            default = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = 'user_name',
-                queue = 'nf',
-                account = 'ECACCOUNT',
-                sthost = 'sthost',
+            default = 'default'
             ),
-            parallel = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = user,
-                queue = 'nf',
-                ncpus = '12',
-                mem = '1000',
-            )
         )
     )
 

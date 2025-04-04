@@ -44,12 +44,12 @@ class JobDestFileDB(object):
 
     def __init__(self):
         self._user_config_dirs = [
-                os.path.expanduser('~/.sjob'),
-                os.path.expanduser('~/.comfies/sjob')
-                ]
+            os.path.expanduser('~/.sjob'),
+            os.path.expanduser('~/.comfies/sjob'),
+            os.path.join(os.path.dirname(__file__), 'data', 'sjob')
+        ]
 
     def read(self, jobdest):
-
         cfg = None
         # first, try user's config dirs
         for d in self._user_config_dirs:
@@ -66,7 +66,7 @@ class JobDestFileDB(object):
         if cfg is None:
             # try to get config from the installed 'comfies' package
             try:
-                s = pkgutil.get_data('comfies', 'data/sjob/'+jobdest)
+                s = pkgutil.get_data('geoglows_ecflow.workflow.comfies', 'data/sjob/' + jobdest)
             except IOError:
                 # 'comfies' package is available but config file does not exist
                 pass

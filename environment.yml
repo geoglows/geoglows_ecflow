@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python=3.12
   - pip
-  - ecflow
+  - ecflow=5.13.8
   - nco
   - pyyaml
   - numpy

@@ -1,0 +1,10 @@
+{
+          "class"  :  "Slurm",
+       "hostname"  :  "lxc",
+  "default_shell"  :  "/bin/ksh -l",
+     "directives"  :  [
+                      "#SBATCH --output={output_path}",
+                      "#SBATCH --error={output_path}",
+                      "#SBATCH --job-name={script_parent}_{script_name}"
+                      ]
+}
