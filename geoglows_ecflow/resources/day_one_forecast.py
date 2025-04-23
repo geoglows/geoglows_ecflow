@@ -294,7 +294,7 @@ def update_forecast_records(
     first_day_flows = np.asarray(first_day_flows)
     record_netcdf.variables["Qout"][
         start_time_index:end_time_index, :
-    ] = first_day_flows
+    ] = first_day_flows.T
 
     # save and close the netcdf
     record_netcdf.sync()
