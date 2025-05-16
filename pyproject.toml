@@ -9,6 +9,7 @@ authors = [
 dependencies = [
     "pyyaml>=6.0.1",
     "numpy>=1.25.2",
+    "numcodecs>=0.13.1",
     "netcdf4>=1.6.4",
     "dask>=2023.9.2",
     "pandas>=2.1.0",
