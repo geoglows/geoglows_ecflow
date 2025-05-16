@@ -12,7 +12,6 @@ import dask
 from numcodecs import Blosc
 
 
-
 def merge_forecast_qout_files(rapid_output: str, vpu: str | int):
     # list the forecast files
     prediction_files = sorted(
