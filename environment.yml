@@ -3,6 +3,8 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python>=3.10
+  - pip
   - ecflow
   - nco
   - pyyaml
@@ -17,4 +19,5 @@ dependencies:
   - boto3
   - requests
   - pip:
-    - basininflow @ git+https://pypi.org/project/basininflow/
+    - basininflow>=0.14.0
+    - river-route>=2.1.1
