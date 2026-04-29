@@ -18,7 +18,6 @@ pip install -e .
 
 ## Non-Python Dependencies
 
-- rapid>=20210423
 - ecflow>=5.11.3
 - nco>=5.1.8
 - ksh>=2020.0.0
@@ -85,14 +84,6 @@ pip install -e .
     # which are installed together with the suite.
     # --------------------------------------------
     packages = dict(
-        model = dict(
-            srcdir = 'git+https://github.com/c-h-david/rapid.git@20210423',
-        ),
-
-        petsc = dict(
-            srcdir = srcroot + 'petsc_reqs',
-        ),
-
         scripts = dict(
             srcdir = srcroot + 'scripts',
         ),
