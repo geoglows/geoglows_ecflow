@@ -117,13 +117,6 @@ class Builder(GEOGLOWSBaseBuilder):
             packages=["scripts"]
         )
 
-        n_build_petsc = Task("build_petsc")
-        if "cc" in self.config.get(
-            "jobs.destinations.default.host", default="lxc"
-        ):
-            n_build_petsc.add_defstatus(complete)
-        n_build_rapid = Task("build_rapid")
-        n_build_rapid.trigger = n_build_petsc.complete
         n_build_venv = Task("build_venv")
         n_packages.trigger = n_build_venv.complete
         n_statics = Task("install_static_data")
@@ -138,8 +131,6 @@ class Builder(GEOGLOWSBaseBuilder):
         n_make.add(
             Variable("SMSTRIES", 1),
             n_build_venv,
-            n_build_petsc,
-            n_build_rapid,
             n_packages,
             n_statics,
             n_initialize,
