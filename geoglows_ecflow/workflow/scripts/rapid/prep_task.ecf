@@ -15,7 +15,6 @@
 
 
 mkdir -p $sim_fcdir
-mkdir -p $sim_fcdir/inflows
 
 ln -snf $suite_staticdata/input $sim_fcdir/input
 

@@ -25,13 +25,16 @@ DT_ROUTING_S = 15 * 60
 
 
 def _find_state_init(vpu_input_dir: str, date: str) -> str | None:
-    """Find prior-cycle Qfinal at 24/48/72h lookback, then seasonal fallback."""
+    """Find prior-cycle Qinit at 24/48/72h lookback, then seasonal fallback."""
     # Forecasts run at 00 and 12 UTC; the 24/48/72h lookback tolerates one or
     # two missed cycles before falling through to a seasonal climatology.
+    # Qinit_<past>.parquet is written by the previous cycle's
+    # compute_init_flows step (ensemble mean). The per-member Qfinal files
+    # written by this script are diagnostic artifacts and are not read here.
     base = datetime.datetime.strptime(date, "%Y%m%d%H")
     for hrs in (24, 48, 72):
         past = (base - datetime.timedelta(hours=hrs)).strftime("%Y%m%d%H")
-        cand = os.path.join(vpu_input_dir, f"Qfinal_{past}.parquet")
+        cand = os.path.join(vpu_input_dir, f"Qinit_{past}.parquet")
         if os.path.exists(cand):
             return cand
     seasonal = sorted(glob(os.path.join(vpu_input_dir, "seasonal_qinit*.parquet")))
