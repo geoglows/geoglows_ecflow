@@ -6,7 +6,6 @@ import os
 import sys
 import re
 import logging as log
-from glob import glob
 
 
 def create_logger(

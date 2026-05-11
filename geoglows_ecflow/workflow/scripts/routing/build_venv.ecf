@@ -22,20 +22,20 @@
 %includeonce <gdal.h>
 
 _CONDA_SET_GEOTIFF_CSV=""
-GDAL_DATA=$suite_libdir/virtualenvs/rapid/share/gdal
-GDAL_DRIVER_PATH=$suite_libdir/virtualenvs/rapid/lib/gdalplugins
+GDAL_DATA=$suite_libdir/virtualenvs/routing/share/gdal
+GDAL_DRIVER_PATH=$suite_libdir/virtualenvs/routing/lib/gdalplugins
 GEOTIFF_CSV=''
-PROJ_LIB=$suite_libdir/virtualenvs/rapid/share/proj
+PROJ_LIB=$suite_libdir/virtualenvs/routing/share/proj
 export _CONDA_SET_GDAL_DATA=""
 export _CONDA_SET_GDAL_DRIVER_PATH=""
 export _CONDA_SET_PROJ_LIB=""
 export LC_ALL=C
-rm -rf $suite_libdir/virtualenvs/rapid
+rm -rf $suite_libdir/virtualenvs/routing
 
 module load conda/22.11.1-2
 
 cat > venv.yaml << EOF
-name: rapid
+name: routing
 channels:
   - conda-forge
   - defaults
@@ -63,10 +63,10 @@ dependencies:
 EOF
 
 conda config --set auto_activate_base True
-conda create python=3.10 -c conda-forge -p $suite_libdir/virtualenvs/rapid
-conda activate $suite_libdir/virtualenvs/rapid
+conda create python=3.10 -c conda-forge -p $suite_libdir/virtualenvs/routing
+conda activate $suite_libdir/virtualenvs/routing
 set +u
 conda install -c conda-forge -y mamba
-mamba env update -f venv.yaml -p $suite_libdir/virtualenvs/rapid
+mamba env update -f venv.yaml -p $suite_libdir/virtualenvs/routing
 set -u
 %include <remove_conda.h>

@@ -6,10 +6,10 @@ set +eu
 #conda config --append envs_dirs $suite_libdir/virtualenv
 
 _CONDA_SET_GEOTIFF_CSV=""
-GDAL_DATA=$suite_libdir/virtualenvs/rapid/share/gdal
-GDAL_DRIVER_PATH=$suite_libdir/virtualenvs/rapid/lib/gdalplugins
+GDAL_DATA=$suite_libdir/virtualenvs/routing/share/gdal
+GDAL_DRIVER_PATH=$suite_libdir/virtualenvs/routing/lib/gdalplugins
 GEOTIFF_CSV=''
-PROJ_LIB=$suite_libdir/virtualenvs/rapid/share/proj
+PROJ_LIB=$suite_libdir/virtualenvs/routing/share/proj
 conda config --get
-conda activate $suite_libdir/virtualenvs/rapid
+conda activate $suite_libdir/virtualenvs/routing
 set -eu

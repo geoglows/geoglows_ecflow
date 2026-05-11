@@ -28,12 +28,12 @@ class Builder(GEOGLOWSBaseBuilder):
     ecflow_module = "geoglows_ecflow.workflow.parts.nodes"
 
     scripts = [
-        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/routing",
         "geoglows_ecflow/workflow/scripts/common",
     ]
 
     includes = [
-        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/routing",
         "geoglows_ecflow/workflow/scripts/common",
     ]
 
