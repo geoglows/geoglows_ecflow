@@ -36,8 +36,8 @@ ens_pworkdir=$suite_workdir
 ens_inputdir=$ens_workdir/grib/$ens_basetime
 
 ens_fcdir=$ens_workdir/fc/$ens_basetime
-ens_rapid_input=$ens_fcdir/input
-ens_rapid_output=$ens_fcdir/output
+ens_input=$ens_fcdir/input
+ens_output=$ens_fcdir/output
 
 ens_member=%MEMBER:0%
 ens_nmembers=%MEMBERS:51%
