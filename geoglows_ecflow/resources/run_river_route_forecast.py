@@ -42,12 +42,12 @@ def _find_state_init(vpu_input_dir: str, date: str) -> str | None:
 
 
 def river_route_forecast_exec(workspace: str, job_id: str, log_dir: str) -> None:
-    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
 
     job = data.get(job_id)
     if not job:
-        raise ValueError(f"Job '{job_id}' not found in rapid_run.json")
+        raise ValueError(f"Job '{job_id}' not found in forecast_run.json")
 
     date = data["date"]
     runoff = job["runoff"]
@@ -101,8 +101,8 @@ def river_route_forecast_exec(workspace: str, job_id: str, log_dir: str) -> None
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run river-route forecast for one (vpu, ens) job.")
-    parser.add_argument("workspace", help="Path to directory containing rapid_run.json")
-    parser.add_argument("job_id", help="Job key inside rapid_run.json (e.g. job_<vpu>_<mem>)")
+    parser.add_argument("workspace", help="Path to directory containing forecast_run.json")
+    parser.add_argument("job_id", help="Job key inside forecast_run.json (e.g. job_<vpu>_<mem>)")
     args = parser.parse_args(argv)
 
     log_dir = os.path.join(args.workspace, "subprocess")

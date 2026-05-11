@@ -23,9 +23,9 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     Converts the netcdf forecast files to zarr.
 
     Args:
-        workspace (str): Path to rapid_run.json base directory.
+        workspace (str): Path to forecast_run.json base directory.
     """
-    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
         rapid_output = data["output_dir"]
         date = data["date"]

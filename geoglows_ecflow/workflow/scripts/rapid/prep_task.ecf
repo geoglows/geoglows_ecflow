@@ -18,6 +18,6 @@ mkdir -p $sim_fcdir
 
 ln -snf $suite_staticdata/input $sim_fcdir/input
 
-python3 -m geoglows_ecflow.resources.prep_rapid_forecast $sim_fcdir
+python3 -m geoglows_ecflow.resources.prep_river_route_forecast $sim_fcdir
 
 %include <remove_conda.h>

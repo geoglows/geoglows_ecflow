@@ -14,7 +14,7 @@ INIT_TIME_INDEX = 7
 
 
 def main(workspace: str, vpu: str) -> None:
-    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         ymd = json.load(f)["date"]
 
     avg_path = os.path.join(workspace, "output", f"nces_avg_{vpu}.nc")
@@ -30,7 +30,7 @@ def main(workspace: str, vpu: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("workspace", help="Path to rapid_run.json base directory.")
+    parser.add_argument("workspace", help="Path to forecast_run.json base directory.")
     parser.add_argument("vpu", help="VPU number to process.")
     args = parser.parse_args()
     main(args.workspace, args.vpu)

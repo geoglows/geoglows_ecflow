@@ -12,7 +12,7 @@ def upload_to_s3(workspace: str, aws_config_file: str):
     Uploads GEOGloWS forecast output to AWS.
 
     Args:
-        workspace (str): Path to rapid_run.json base directory.
+        workspace (str): Path to forecast_run.json base directory.
         aws_config_file (str): Path to AWS config file.
     """
     with open(aws_config_file, "r") as f:
@@ -22,7 +22,7 @@ def upload_to_s3(workspace: str, aws_config_file: str):
         forecast_bucket_uri = config["bucket_forecast_archive"]
         mapstyletable_bucket_uri = config["bucket_maptable_archive"]
 
-    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
         date = data["date"]
         rapid_output_path = data["output_dir"]
