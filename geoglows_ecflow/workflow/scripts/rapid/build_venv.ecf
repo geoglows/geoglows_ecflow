@@ -55,7 +55,6 @@ dependencies:
   - netcdf4==1.6.5
   - zarr==2.16.1
   - boto3==1.28.65
-  - pangaea==0.0.4
   - nco==5.1.9
   - awscli
   - pip

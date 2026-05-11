@@ -19,5 +19,4 @@ dependencies:
   - boto3
   - requests
   - pip:
-    - basininflow>=0.14.0
     - river-route>=2.1.1
