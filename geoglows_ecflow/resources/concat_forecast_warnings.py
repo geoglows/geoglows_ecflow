@@ -46,7 +46,7 @@ if __name__ == "__main__":
         help="Path to the daily workspace directory, named in YYYYMMDDHH "
         "format, containing (1) *.runoff.nc IFS forecast files, "
         "(2) an output directory of routed discharge netcdfs, "
-        "(3) symlinks to the rapid inputs and return periods directories",
+        "(3) symlinks to the per-VPU inputs and return periods directories",
     )
     args = parser.parse_args()
     workspace = args.workspace[0]

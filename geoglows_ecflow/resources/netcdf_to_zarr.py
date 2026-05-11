@@ -27,16 +27,16 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     """
     with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
-        rapid_output = data["output_dir"]
+        output_dir = data["output_dir"]
         date = data["date"]
 
     vpu_nums = sorted(
-        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(rapid_output, f"Qout_*_52.nc"))])
+        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(output_dir, f"Qout_*_52.nc"))])
     )
 
-    qout_1_51_files = sorted([os.path.join(rapid_output, f"Qout_{vpu}.nc") for vpu in vpu_nums])
-    qout_52_files = sorted(glob.glob(os.path.join(rapid_output, f"Qout_*_52.nc")))
-    zarr_file_path = os.path.join(rapid_output, f"Qout_{date}.zarr")
+    qout_1_51_files = sorted([os.path.join(output_dir, f"Qout_{vpu}.nc") for vpu in vpu_nums])
+    qout_52_files = sorted(glob.glob(os.path.join(output_dir, f"Qout_*_52.nc")))
+    zarr_file_path = os.path.join(output_dir, f"Qout_{date}.zarr")
 
     if os.path.exists(zarr_file_path):
         shutil.rmtree(zarr_file_path)
@@ -75,7 +75,7 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
                 logging.info("Writing to zarr")
                 (
                     ds
-                    .drop_vars(["crs", "lat", "lon", "time_bnds", "Qout_err"])
+                    .drop_vars(["crs", "lat", "lon", "time_bnds", "Qout_err"], errors="ignore")
                     .chunk({
                         "time": -1,
                         "rivid": "auto",

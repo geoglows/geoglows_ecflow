@@ -12,25 +12,6 @@ import dask
 from numcodecs import Blosc
 
 
-def merge_forecast_qout_files(rapid_output: str, vpu: str | int):
-    # list the forecast files
-    prediction_files = sorted(
-        glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
-    )
-
-    # merge them into a single file joined by ensemble number
-    ensemble_index_list = []
-    qout_datasets = []
-    for forecast_nc in prediction_files:
-        ensemble_index_list.append(
-            int(os.path.basename(forecast_nc)[:-3].split("_")[-1])
-        )
-        qout_datasets.append(xr.open_dataset(forecast_nc).Qout)
-    return xr.concat(
-        qout_datasets, pd.Index(ensemble_index_list, name="ensemble")
-    )
-
-
 def check_for_return_period_flow(
     largeflows_df, forecasted_flows_df, stream_order, rp_data
 ):
@@ -100,8 +81,8 @@ def get_time_of_first_exceedance(forecasted_flows_df, flow):
 
 def postprocess_vpu(
     vpu,
-    rapid_input,
-    rapid_output,
+    input_dir,
+    output_dir,
     return_periods_dir,
     forecast_records,
 ):
@@ -126,7 +107,7 @@ def postprocess_vpu(
     logging.info("  merging forecasts")
 
     merged_forecasts = xr.open_dataset(
-        os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+        os.path.join(output_dir, f"nces_avg_{vpu}.nc")
     )
 
     # collect the times and comids from the forecasts
@@ -145,7 +126,7 @@ def postprocess_vpu(
 
     # read the list of large streams
     logging.info("  creating dataframe of large streams")
-    streams_file_path = os.path.join(rapid_input, "master_table.parquet")
+    streams_file_path = os.path.join(input_dir, "master_table.parquet")
     streams_df = pd.read_parquet(streams_file_path)
     large_vpu_streams_df = streams_df[
         (streams_df["VPUCode"] == int(vpu)) & ((streams_df["strmOrder"] >= 3))
@@ -191,7 +172,7 @@ def postprocess_vpu(
     logging.info("  updating the forecast records file")
     try:
         update_forecast_records(
-            vpu, forecast_records, rapid_output, year, first_day_flows, times
+            vpu, forecast_records, output_dir, year, first_day_flows, times
         )
     except Exception as e:
         logging.info("  unexpected error updating the forecast records")
@@ -208,7 +189,7 @@ def postprocess_vpu(
         .replace({"": np.nan})
     )
     largeflows.to_parquet(
-        os.path.join(rapid_output, f"forecastwarnings_{vpu}.parquet")
+        os.path.join(output_dir, f"forecastwarnings_{vpu}.parquet")
     )
 
     return
@@ -231,17 +212,14 @@ def update_forecast_records(
         reference = nc.Dataset(reference)
         # make a new record file
         record = nc.Dataset(record_path, "w")
-        # copy the right dimensions and variables
+        # copy the right dimensions and variables. lat/lon are deliberately
+        # not carried into the record: they're dropped during the zarr
+        # conversion below, and river-route's native output doesn't
+        # necessarily include them.
         record.createDimension("time", None)
         record.createDimension("rivid", reference.dimensions["rivid"].size)
         record.createVariable(
             "time", reference.variables["time"].dtype, dimensions=("time",)
-        )
-        record.createVariable(
-            "lat", reference.variables["lat"].dtype, dimensions=("rivid",)
-        )
-        record.createVariable(
-            "lon", reference.variables["lon"].dtype, dimensions=("rivid",)
         )
         record.createVariable(
             "rivid", reference.variables["rivid"].dtype, dimensions=("rivid",)
@@ -252,10 +230,7 @@ def update_forecast_records(
             dimensions=("time", "rivid"),
             fill_value=np.nan,
         )
-        # and also prepopulate the lat, lon, and rivid fields
         record.variables["rivid"][:] = reference.variables["rivid"][:]
-        record.variables["lat"][:] = reference.variables["lat"][:]
-        record.variables["lon"][:] = reference.variables["lon"][:]
 
         # set the time variable attributes
         record.variables["time"].setncattr(
@@ -340,7 +315,7 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
         logging.info("Writing to zarr")
         (
             record_nc
-            .drop_vars(["lat", "lon"])
+            .drop_vars(["lat", "lon"], errors="ignore")
                     .chunk({
                         "time": -1,
                         "rivid": "auto"
@@ -379,17 +354,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     workspace = args.workspace[0]
     vpu = args.vpu[0]
-    rapid_input = os.path.join(workspace, "input")
-    rapid_output = os.path.join(workspace, "output")
+    input_dir = os.path.join(workspace, "input")
+    output_dir = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
     forecast_records = args.output_dir[0]
-    rapid_output = os.path.join(workspace, "output")
+    output_dir = os.path.join(workspace, "output")
 
     # start logging
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
     postprocess_vpu(
-        vpu, rapid_input, rapid_output, returnperiods, forecast_records
+        vpu, input_dir, output_dir, returnperiods, forecast_records
     )
 
     logging.info("Finished at " + datetime.datetime.now().strftime("%c"))

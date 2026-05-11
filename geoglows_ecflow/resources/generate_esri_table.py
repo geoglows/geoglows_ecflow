@@ -9,21 +9,21 @@ import xarray as xr
 
 
 def postprocess_vpu_forecast_directory(
-    rapid_output: str,
+    output_dir: str,
     returnperiods: str,
     vpu: int or str,
 ):
     # creates file name for the csv file
     date_string = os.path.basename(
-        os.path.dirname(rapid_output)
+        os.path.dirname(output_dir)
     )  # should be a date in YYYYMMDDHH format
     style_table_file_name = f"mapstyletable_{vpu}_{date_string}.parquet"
-    if os.path.exists(os.path.join(rapid_output, style_table_file_name)):
+    if os.path.exists(os.path.join(output_dir, style_table_file_name)):
         logging.info(f"Style table already exists: {style_table_file_name}")
         return
     logging.info(f"Creating style table: {style_table_file_name}")
 
-    nces_output_filename = os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+    nces_output_filename = os.path.join(output_dir, f"nces_avg_{vpu}.nc")
     # read the date and COMID lists from one of the netcdfs
     with xr.open_dataset(nces_output_filename) as ds:
         comids = ds["rivid"][:].values
@@ -84,7 +84,7 @@ def postprocess_vpu_forecast_directory(
             df, left_index=True, right_index=True
         )
 
-    maptable_outdir = os.path.join(rapid_output, "map_style_tables")
+    maptable_outdir = os.path.join(output_dir, "map_style_tables")
     if not os.path.exists(maptable_outdir):
         os.makedirs(maptable_outdir)
 
@@ -109,12 +109,12 @@ if __name__ == "__main__":
         help="Path to the daily workspace directory, named in YYYYMMDDHH "
         "format, containing (1) *.runoff.nc IFS forecast files, "
         "(2) an output directory of routed discharge netcdfs, "
-        "(3) symlinks to the rapid inputs and return periods directories",
+        "(3) symlinks to the per-VPU inputs and return periods directories",
     )
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     args = parser.parse_args()
     workspace = args.workspace[0]
-    rapid_output = os.path.join(workspace, "output")
+    output_dir = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
     vpu = args.vpu[0]
 
@@ -125,6 +125,6 @@ if __name__ == "__main__":
         stream=sys.stdout,
     )
 
-    params = [rapid_output, returnperiods, vpu]
+    params = [output_dir, returnperiods, vpu]
 
     postprocess_vpu_forecast_directory(*params)

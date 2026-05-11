@@ -25,7 +25,7 @@ def upload_to_s3(workspace: str, aws_config_file: str):
     with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
         date = data["date"]
-        rapid_output_path = data["output_dir"]
+        output_dir = data["output_dir"]
 
     # Create an S3 client
     s3 = boto3.client(
@@ -35,7 +35,7 @@ def upload_to_s3(workspace: str, aws_config_file: str):
     )
 
     for forecast_nc in sorted(
-        glob.glob(os.path.join(rapid_output_path, f"Qout_*.nc"))
+        glob.glob(os.path.join(output_dir, f"Qout_*.nc"))
     ):
         s3.upload_file(
             forecast_nc,
