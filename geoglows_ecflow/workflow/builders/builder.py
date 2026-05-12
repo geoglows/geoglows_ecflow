@@ -317,15 +317,6 @@ class Builder(GEOGLOWSBaseBuilder):
             n_diss_ip.trigger = n_ret_ens.complete & n_ret_hr.complete
             n_diss.add(n_diss_ip)
 
-            n_diss_fc = Family("diss_fc")
-            n_diss_fc.add(Variable("CONTEXT", "rapid"))
-            n_diss_fc.defuser = e_no_diss
-            n_diss_fc.add(Task("diss"))
-            n_diss_fc.trigger = n_nc_to_zarr.complete & n_plain_table.complete & n_forecast_warnings.complete
-
-            if main_hh.get_variable("EMOS_BASE").value() != "12":
-                n_diss.add(n_diss_fc)
-
             n_web = Family("web_push")
             n_web.trigger = n_nc_to_zarr.complete & n_vpus.complete
             n_web_prod = Family("prod")
