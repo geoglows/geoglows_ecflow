@@ -13,24 +13,12 @@ from geoglows_ecflow.resources.helper_functions import (
 )
 
 
-# Member 52 is the deterministic high-resolution (HRES) forecast, smuggled
-# into the same per-(vpu, member) parallelization as ENS members 1-51. HRES
-# is delivered at 1h resolution over 10 days; ENS at 3h over 15 days.
-HRES_MEMBER = 52
-ENS_INTERVAL_S = 3 * 3600
-HRES_INTERVAL_S = 1 * 3600
-ENS_DURATION_S = 360 * 3600
-HRES_DURATION_S = 240 * 3600
-DT_ROUTING_S = 15 * 60
-
-
 def _find_state_init(vpu_input_dir: str, date: str) -> str | None:
     """Find prior-cycle Qinit at 24/48/72h lookback, then seasonal fallback."""
     # Forecasts run at 00 and 12 UTC; the 24/48/72h lookback tolerates one or
     # two missed cycles before falling through to a seasonal climatology.
     # Qinit_<past>.parquet is written by the previous cycle's
-    # compute_init_flows step (ensemble mean). The per-member Qfinal files
-    # written by this script are diagnostic artifacts and are not read here.
+    # compute_init_flows step (ensemble mean).
     base = datetime.datetime.strptime(date, "%Y%m%d%H")
     for hrs in (24, 48, 72):
         past = (base - datetime.timedelta(hours=hrs)).strftime("%Y%m%d%H")
@@ -61,10 +49,6 @@ def river_route_forecast_exec(workspace: str, job_id: str, log_dir: str) -> None
     )
 
     ens = get_ensemble_number_from_forecast(runoff)
-    is_hres = ens == HRES_MEMBER
-    interval_s = HRES_INTERVAL_S if is_hres else ENS_INTERVAL_S
-    duration_s = HRES_DURATION_S if is_hres else ENS_DURATION_S
-
     state_init = _find_state_init(vpu_input_dir, date) if initialize_flows else None
     state_final = os.path.join(vpu_input_dir, f"Qfinal_{date}_{ens}.parquet")
 
@@ -80,20 +64,17 @@ def river_route_forecast_exec(workspace: str, job_id: str, log_dir: str) -> None
         discharge_files=[discharge_file],
         channel_state_init_file=state_init,
         channel_state_final_file=state_final,
-        dt_routing=DT_ROUTING_S,
-        dt_total=duration_s,
-        dt_discharge=interval_s,
-        start_datetime=(
-            f"{date[:4]}-{date[4:6]}-{date[6:8]} {date[8:10]}:00:00"
-        ),
         # ECMWF runoff is accumulated since forecast start; the default
         # ("incremental") would silently produce wrong day-1 values.
         grid_accumulation_type="cumulative",
+        runoff_processing_mode="ensemble",
         # Pin the netCDF schema to RAPID's names ("Qout" / "rivid") so
         # downstream NCO/zarr/day_one consumers stay unaffected by the
         # router swap. river-route's own defaults are "Q" / "river_id".
         var_discharge="Qout",
         var_river_id="rivid",
+        var_x="lon",
+        var_y="lat",
         progress_bar=False,
         log_level="INFO",
     ).route()
