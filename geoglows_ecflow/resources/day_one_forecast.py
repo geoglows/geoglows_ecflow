@@ -113,7 +113,7 @@ def postprocess_vpu(
     # collect the times and comids from the forecasts
     logging.info("  reading info from forecasts")
     times = pd.to_datetime(pd.Series(merged_forecasts.time))
-    comids = pd.Series(merged_forecasts.rivid)
+    comids = pd.Series(merged_forecasts.river_id)
     tomorrow = times[0] + pd.Timedelta(days=1)
     year = times[0].strftime("%Y")
 
@@ -142,7 +142,7 @@ def postprocess_vpu(
     # now process the mean flows for each river in the vpu
     for comid in comids:
         # compute the timeseries of average flows
-        means = merged_forecasts.sel(rivid=comid).Qout.values.flatten()
+        means = merged_forecasts.sel(river_id=comid).Q.values.flatten()
 
         # put it in a dataframe with the times series
         forecasted_flows = (
@@ -217,20 +217,20 @@ def update_forecast_records(
         # conversion below, and river-route's native output doesn't
         # necessarily include them.
         record.createDimension("time", None)
-        record.createDimension("rivid", reference.dimensions["rivid"].size)
+        record.createDimension("river_id", reference.dimensions["river_id"].size)
         record.createVariable(
             "time", reference.variables["time"].dtype, dimensions=("time",)
         )
         record.createVariable(
-            "rivid", reference.variables["rivid"].dtype, dimensions=("rivid",)
+            "river_id", reference.variables["river_id"].dtype, dimensions=("river_id",)
         )
         record.createVariable(
-            "Qout",
-            reference.variables["Qout"].dtype,
-            dimensions=("time", "rivid"),
+            "Q",
+            reference.variables["Q"].dtype,
+            dimensions=("time", "river_id"),
             fill_value=np.nan,
         )
-        record.variables["rivid"][:] = reference.variables["rivid"][:]
+        record.variables["river_id"][:] = reference.variables["river_id"][:]
 
         # set the time variable attributes
         record.variables["time"].setncattr(
@@ -266,7 +266,7 @@ def update_forecast_records(
     end_time_index = start_time_index + len(first_day_flows[0])
     # convert all those saved flows to a np array and write to the netcdf
     first_day_flows = np.asarray(first_day_flows)
-    record_netcdf.variables["Qout"][
+    record_netcdf.variables["Q"][
         start_time_index:end_time_index, :
     ] = first_day_flows.T
 
@@ -310,15 +310,15 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
         #if we get rid of dask, we can get rid of the compressor
         #the compressor throws an error for version 3 so specify version 2
         compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
-        encoding = {'Qout': {"compressor": compressor}}
-        
+        encoding = {'Q': {"compressor": compressor}}
+
         logging.info("Writing to zarr")
         (
             record_nc
             .drop_vars(["lat", "lon"], errors="ignore")
                     .chunk({
                         "time": -1,
-                        "rivid": "auto"
+                        "river_id": "auto"
                     })
                     .to_zarr(
                         zarr_path,

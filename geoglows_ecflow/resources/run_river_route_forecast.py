@@ -68,11 +68,6 @@ def river_route_forecast_exec(workspace: str, job_id: str, log_dir: str) -> None
         # ("incremental") would silently produce wrong day-1 values.
         grid_accumulation_type="cumulative",
         runoff_processing_mode="ensemble",
-        # Pin the netCDF schema to RAPID's names ("Qout" / "rivid") so
-        # downstream NCO/zarr/day_one consumers stay unaffected by the
-        # router swap. river-route's own defaults are "Q" / "river_id".
-        var_discharge="Qout",
-        var_river_id="rivid",
         var_x="lon",
         var_y="lat",
         progress_bar=False,

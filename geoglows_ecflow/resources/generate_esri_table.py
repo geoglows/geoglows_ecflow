@@ -26,9 +26,9 @@ def postprocess_vpu_forecast_directory(
     nces_output_filename = os.path.join(output_dir, f"nces_avg_{vpu}.nc")
     # read the date and COMID lists from one of the netcdfs
     with xr.open_dataset(nces_output_filename) as ds:
-        comids = ds["rivid"][:].values
+        comids = ds["river_id"][:].values
         dates = pd.to_datetime(ds["time"][:].values)
-        mean_flows = ds["Qout"][:].values.round(2)
+        mean_flows = ds["Q"][:].values.round(2)
 
     mean_flow_df = pd.DataFrame(mean_flows, columns=comids, index=dates)
 
@@ -50,7 +50,7 @@ def postprocess_vpu_forecast_directory(
                 "return_50": rp_ncfile.variables["rp50"][:],
                 "return_100": rp_ncfile.variables["rp100"][:],
             },
-            index=rp_ncfile.variables["rivid"][:],
+            index=rp_ncfile.variables["river_id"][:],
         )
 
     mean_thickness_df = pd.DataFrame(columns=comids, index=dates, dtype=int)

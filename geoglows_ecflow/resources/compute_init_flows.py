@@ -6,7 +6,7 @@ import pandas as pd
 import xarray as xr
 
 
-# Time index 7 of the ensemble-mean Qout corresponds to t+24h on the ENS
+# Time index 7 of the ensemble-mean Q corresponds to t+24h on the ENS
 # 3h-resolution grid (the HRES member is excluded from the average upstream by
 # nco_calc.ecf). The next cycle reads this file as river-route's
 # channel_state_init_file via run_river_route_forecast._find_state_init.
@@ -23,7 +23,7 @@ def main(workspace: str, vpu: str) -> None:
     with xr.open_dataset(avg_path) as ds:
         # river-route's channel_state_init_file is a single-column parquet
         # whose row order must match river_id ordering in params.parquet.
-        pd.DataFrame({"Q": ds["Qout"].isel(time=INIT_TIME_INDEX).values}).to_parquet(
+        pd.DataFrame({"Q": ds["Q"].isel(time=INIT_TIME_INDEX).values}).to_parquet(
             out_path
         )
 

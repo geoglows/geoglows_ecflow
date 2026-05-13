@@ -58,11 +58,11 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
         }
     }):
         logging.info("Opening ensembles 1-51 datasets")
-        with xr.open_mfdataset(qout_1_51_files, combine="nested", concat_dim="rivid") as ds151:
+        with xr.open_mfdataset(qout_1_51_files, combine="nested", concat_dim="river_id") as ds151:
             logging.info("Assigning the ensemble coordinate variable")
             ds151 = ds151.assign_coords(ensemble=np.arange(1, 52))
             logging.info("Opening ensemble 52 dataset")
-            with xr.open_mfdataset(qout_52_files, combine="nested", concat_dim="rivid") as ds52:
+            with xr.open_mfdataset(qout_52_files, combine="nested", concat_dim="river_id") as ds52:
                 logging.info("Assigning the ensemble coordinate variable")
                 ds52 = ds52.assign_coords(ensemble=52)
 
@@ -71,14 +71,14 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
 
                 logging.info("Configuring compression")
                 compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
-                encoding = {'Qout': {"compressor": compressor}}
+                encoding = {'Q': {"compressor": compressor}}
                 logging.info("Writing to zarr")
                 (
                     ds
-                    .drop_vars(["crs", "lat", "lon", "time_bnds", "Qout_err"], errors="ignore")
+                    .drop_vars(["crs", "lat", "lon", "time_bnds"], errors="ignore")
                     .chunk({
                         "time": -1,
-                        "rivid": "auto",
+                        "river_id": "auto",
                         "ensemble": -1
                     })
                     .to_zarr(
