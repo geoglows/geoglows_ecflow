@@ -11,7 +11,7 @@ import xarray as xr
 def postprocess_vpu_forecast_directory(
     output_dir: str,
     returnperiods: str,
-    vpu: int or str,
+    vpu: int | str,
 ):
     # creates file name for the csv file
     date_string = os.path.basename(

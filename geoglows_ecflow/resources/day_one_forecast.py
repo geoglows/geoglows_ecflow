@@ -337,27 +337,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "workspace",
-        nargs=1,
         help="path to the daily workspace directory",
     )
     parser.add_argument(
         "vpu",
-        nargs=1,
         help="VPU number",
     )
     parser.add_argument(
         "output_dir",
-        nargs=1,
         help="path to the forecast records output directory",
     )
 
     args = parser.parse_args()
-    workspace = args.workspace[0]
-    vpu = args.vpu[0]
+    workspace = args.workspace
+    vpu = args.vpu
     input_dir = os.path.join(workspace, "input")
     output_dir = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
-    forecast_records = args.output_dir[0]
+    forecast_records = args.output_dir
     output_dir = os.path.join(workspace, "output")
 
     # start logging

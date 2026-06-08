@@ -1,9 +1,9 @@
 from geoglows_ecflow.workflow.builders.base import GEOGLOWSBaseBuilder
 from geoglows_ecflow.workflow.comfies.ooflow import Trigger, Defuser
 from geoglows_ecflow.workflow.comfies.ooflow import all_complete, Event, complete
-from geoglows_ecflow.workflow.comfies.ooflow import complete, Limit, InLimit, Variable
+from geoglows_ecflow.workflow.comfies.ooflow import Limit, InLimit, Variable
 from geoglows_ecflow.workflow.comfies.ooflow import RepeatDate, Defstatus
-from geoglows_ecflow.workflow.parts.nodes import Family, Task
+from geoglows_ecflow.workflow.parts.nodes import Family, Task, NominalTime
 from geoglows_ecflow.workflow.parts.times import (
     t2t,
     Timer,
@@ -16,9 +16,6 @@ from geoglows_ecflow.workflow.parts.epilogs import DummyEpilog
 from geoglows_ecflow.workflow.parts.repeats import calseq_repeat
 from geoglows_ecflow.workflow.parts.packages import PackageInstallers
 from geoglows_ecflow.workflow.comfies.partition import partition
-
-
-from geoglows_ecflow.workflow.parts.nodes import Family, Task, NominalTime
 
 
 class Builder(GEOGLOWSBaseBuilder):
@@ -39,7 +36,7 @@ class Builder(GEOGLOWSBaseBuilder):
 
     def build(self):
         """
-        Create parts and wire them together into an GLOFAS suite.
+        Create parts and wire them together into a GEOGloWS suite.
         Naming conventions:
         n_*  -- ecFlow Node object
         e_*  -- ecFlow Event object
@@ -57,14 +54,10 @@ class Builder(GEOGLOWSBaseBuilder):
         archive_path = self.config.get("exparch")
         suite_dir = self.config.get("workroot")
 
-        with_flood_hazard = self.config.get("with_floodhazard", default=False)
-        wb_days = self.config.get("wb_days", type=int, default=10)
-
         # initially empty suite, provided by parent
         # class will be filled up with content here.
         mars_nworkers = self.config.get("mars_workers", type=int, default=1)
         ens_members = self.config.get("ens_members", type=int, default=51)
-        ens_range = self.config.get("ens_range", type=int, default=30)
         suite = self.suite
         par_jobvars = self.jobvars.dest("parallel", fallback="PARENT")
 
@@ -219,7 +212,7 @@ class Builder(GEOGLOWSBaseBuilder):
                 n_run_hr = Family("run_hr")
                 n_run_en = Family("run_en")
                 n_run_hr.add(Task("dummy"), Timer(tnom + TimeDelta(hours=7)))
-                n_run_en.add(Task("dimmy"), Timer(tnom + TimeDelta(hours=9)))
+                n_run_en.add(Task("dummy"), Timer(tnom + TimeDelta(hours=9)))
                 n_barrier_epilog = DummyEpilog(done=Timer("14:15"))
 
             barrier_hh.add(n_run_hr, n_run_en)

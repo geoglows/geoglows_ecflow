@@ -60,17 +60,15 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
         "workspace",
-        nargs=1,
         help="Path to suite home directory",
     )
     argparser.add_argument(
         "aws_config_file",
-        nargs=1,
         help="Path to AWS config file",
     )
 
     args = argparser.parse_args()
-    workspace = args.workspace[0]
-    aws_config_file = args.aws_config_file[0]
+    workspace = args.workspace
+    aws_config_file = args.aws_config_file
 
     upload_to_s3(workspace, aws_config_file)

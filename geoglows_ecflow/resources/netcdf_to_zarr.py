@@ -95,8 +95,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "workspace",
-        nargs=1,
         help="Path to the suite home directory.",
     )
     args = parser.parse_args()
-    netcdf_forecasts_to_zarr(workspace=args.workspace[0])
+    netcdf_forecasts_to_zarr(workspace=args.workspace)

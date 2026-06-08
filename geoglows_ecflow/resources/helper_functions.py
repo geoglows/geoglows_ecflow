@@ -21,13 +21,13 @@ def create_logger(
     else:
         handler = log.StreamHandler(sys.stdout)
 
-        handler.setLevel(level)
-        handler.setFormatter(
-            log.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        )
+    handler.setLevel(level)
+    handler.setFormatter(
+        log.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
 
-        # Add the handler to the logger
-        logger.addHandler(handler)
+    # Add the handler to the logger
+    logger.addHandler(handler)
 
     return logger
 
