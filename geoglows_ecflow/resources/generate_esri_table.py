@@ -1,11 +1,15 @@
 import argparse
 import logging
 import os
-import sys
 
 import netCDF4 as nc
 import pandas as pd
 import xarray as xr
+
+from geoglows_ecflow.resources.helper_functions import (
+    RETURN_PERIODS,
+    configure_logging,
+)
 
 
 def postprocess_vpu_forecast_directory(
@@ -43,12 +47,8 @@ def postprocess_vpu_forecast_directory(
     with nc.Dataset(rp_path, "r") as rp_ncfile:
         rp_df = pd.DataFrame(
             {
-                "return_2": rp_ncfile.variables["rp2"][:],
-                "return_5": rp_ncfile.variables["rp5"][:],
-                "return_10": rp_ncfile.variables["rp10"][:],
-                "return_25": rp_ncfile.variables["rp25"][:],
-                "return_50": rp_ncfile.variables["rp50"][:],
-                "return_100": rp_ncfile.variables["rp100"][:],
+                f"return_{rp}": rp_ncfile.variables[f"rp{rp}"][:]
+                for rp in RETURN_PERIODS
             },
             index=rp_ncfile.variables["river_id"][:],
         )
@@ -63,12 +63,8 @@ def postprocess_vpu_forecast_directory(
 
     mean_ret_per_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
     mean_ret_per_df[:] = 0
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_2"], axis=1)] = 2
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_5"], axis=1)] = 5
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_10"], axis=1)] = 10
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_25"], axis=1)] = 25
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_50"], axis=1)] = 50
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_100"], axis=1)] = 100
+    for rp in RETURN_PERIODS:
+        mean_ret_per_df[mean_flow_df.gt(rp_df[f"return_{rp}"], axis=1)] = rp
 
     mean_flow_df = mean_flow_df.stack().to_frame().rename(columns={0: "mean"})
     mean_thickness_df = (
@@ -118,12 +114,7 @@ if __name__ == "__main__":
     returnperiods = os.path.join(workspace, "return_periods_dir")
     vpu = args.vpu[0]
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
-    )
+    configure_logging()
 
     params = [output_dir, returnperiods, vpu]
 

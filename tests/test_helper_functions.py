@@ -1,5 +1,6 @@
 """Unit tests pinning current behavior of helper_functions pure functions."""
 
+import json
 import os
 
 import pytest
@@ -8,6 +9,7 @@ from geoglows_ecflow.resources.helper_functions import (
     get_date_from_forecast_dir,
     get_ensemble_number_from_forecast,
     get_valid_vpucode_list,
+    load_forecast_run,
 )
 
 
@@ -47,3 +49,10 @@ def test_get_date_from_forecast_dir_parses_timestamp():
 def test_get_date_from_forecast_dir_raises_without_match():
     with pytest.raises(AttributeError):
         get_date_from_forecast_dir("no-date-here")
+
+
+def test_load_forecast_run_round_trips_manifest(tmp_path):
+    manifest = {"date": "2023010100", "output_dir": "/out", "job_101_52": {}}
+    (tmp_path / "forecast_run.json").write_text(json.dumps(manifest))
+
+    assert load_forecast_run(str(tmp_path)) == manifest
