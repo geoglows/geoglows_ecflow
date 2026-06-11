@@ -60,3 +60,23 @@ def test_return_period_ladder_assigns_expected_levels(tmp_path):
     assert ret_per_by_comid[1].tolist() == [5]
     # 5 is below rp2 (10) -> level 0.
     assert ret_per_by_comid[2].tolist() == [0]
+
+
+def test_thickness_ladder_assigns_expected_levels(tmp_path):
+    output_dir, returnperiods = _write_inputs(tmp_path)
+
+    postprocess_vpu_forecast_directory(
+        str(output_dir), str(returnperiods), VPU
+    )
+
+    table = pd.read_parquet(
+        output_dir
+        / "map_style_tables"
+        / f"mapstyletable_{VPU}_{DATE}.parquet"
+    )
+    thickness_by_comid = table.groupby("comid")["thickness"].unique()
+
+    # 300 crosses the 250 threshold but not 1500 -> thickness 3.
+    assert thickness_by_comid[1].tolist() == [3]
+    # 5 is below the first (20) threshold -> thickness 1.
+    assert thickness_by_comid[2].tolist() == [1]

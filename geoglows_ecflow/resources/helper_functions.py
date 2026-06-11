@@ -12,6 +12,11 @@ import logging as log
 # once here and imported by the modules that build return-period ladders.
 RETURN_PERIODS = [2, 5, 10, 25, 50, 100]
 
+# The high-resolution (HRES) forecast is always ensemble member 52. Members
+# 1-51 are the ensemble perturbations. Defined once here and imported wherever
+# the workflow needs to single out (or exclude) the HRES member.
+HRES_ENSEMBLE_MEMBER = 52
+
 # Shared logging format so every resource module logs identically.
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
 LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"

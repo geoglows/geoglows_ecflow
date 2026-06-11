@@ -14,6 +14,10 @@ from geoglows_ecflow.resources.helper_functions import (
 )
 from geoglows_ecflow.resources.zarr_io import write_dataset_to_zarr
 
+# Only streams of at least this Strahler order are checked against return
+# periods for the warnings summary (smaller headwater streams are skipped).
+MIN_STREAM_ORDER = 3
+
 
 def check_for_return_period_flow(
     largeflows_df, forecasted_flows_df, stream_order, rp_data
@@ -111,7 +115,8 @@ def postprocess_vpu(
     streams_file_path = os.path.join(input_dir, "master_table.parquet")
     streams_df = pd.read_parquet(streams_file_path)
     large_vpu_streams_df = streams_df[
-        (streams_df["VPUCode"] == int(vpu)) & ((streams_df["strmOrder"] >= 3))
+        (streams_df["VPUCode"] == int(vpu))
+        & (streams_df["strmOrder"] >= MIN_STREAM_ORDER)
     ]
 
     # get the list of comids

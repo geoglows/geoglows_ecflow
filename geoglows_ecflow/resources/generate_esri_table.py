@@ -11,6 +11,14 @@ from geoglows_ecflow.resources.helper_functions import (
     configure_logging,
 )
 
+# Only the first 10 days of the forecast are summarized in the style table.
+FORECAST_WINDOW_DAYS = 10
+
+# Mean-flow thresholds (m^3/s) that drive the map line-thickness ladder. Flows
+# below the first threshold get thickness 1; each threshold crossed bumps the
+# thickness by one (levels 2..6).
+THICKNESS_THRESHOLDS = [20, 250, 1500, 10000, 30000]
+
 
 def postprocess_vpu_forecast_directory(
     output_dir: str,
@@ -38,7 +46,8 @@ def postprocess_vpu_forecast_directory(
 
     # limit both dataframes to the first 10 days
     mean_flow_df = mean_flow_df[
-        mean_flow_df.index <= mean_flow_df.index[0] + pd.Timedelta(days=10)
+        mean_flow_df.index
+        <= mean_flow_df.index[0] + pd.Timedelta(days=FORECAST_WINDOW_DAYS)
     ]
 
     # creating pandas dataframe with return periods
@@ -55,11 +64,8 @@ def postprocess_vpu_forecast_directory(
 
     mean_thickness_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
     mean_thickness_df[:] = 1
-    mean_thickness_df[mean_flow_df >= 20] = 2
-    mean_thickness_df[mean_flow_df >= 250] = 3
-    mean_thickness_df[mean_flow_df >= 1500] = 4
-    mean_thickness_df[mean_flow_df >= 10000] = 5
-    mean_thickness_df[mean_flow_df >= 30000] = 6
+    for level, threshold in enumerate(THICKNESS_THRESHOLDS, start=2):
+        mean_thickness_df[mean_flow_df >= threshold] = level
 
     mean_ret_per_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
     mean_ret_per_df[:] = 0

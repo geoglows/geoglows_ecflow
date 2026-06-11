@@ -1,10 +1,11 @@
 """Shared pytest fixtures and import shims for the resources test suite.
 
 These tests pin the *current* behavior of the pure helper functions used by
-the river-route forecast workflow. They deliberately avoid the heavy optional
-dependency ``river_route`` (not needed by the functions under test) by
-injecting a Dummy module into ``sys.modules`` before any test imports
-``run_river_route_forecast``.
+the river-route forecast workflow. The functions under test never touch the
+heavy optional dependency ``river_route``, so when it is not installed we
+inject a Dummy module into ``sys.modules`` before any test imports
+``run_river_route_forecast``. When the real package *is* installed (e.g. on the
+Ubuntu workflow box), it is used as-is.
 """
 
 import sys
@@ -14,10 +15,14 @@ import pandas as pd
 import pytest
 
 # ``run_river_route_forecast`` does ``import river_route as rr`` at module top,
-# but ``_find_state_init`` (the function under test) never touches it. Inject a
-# Dummy module so the import succeeds without the real dependency installed.
+# but ``_find_state_init`` (the function under test) never touches it. Prefer
+# the real package when installed; only fall back to a Dummy module so the
+# import succeeds where the dependency is absent.
 if "river_route" not in sys.modules:
-    sys.modules["river_route"] = types.ModuleType("river_route")
+    try:
+        import river_route  # noqa: F401  (use the real package when present)
+    except ModuleNotFoundError:
+        sys.modules["river_route"] = types.ModuleType("river_route")
 
 
 @pytest.fixture

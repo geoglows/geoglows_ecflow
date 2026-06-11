@@ -8,6 +8,7 @@ import numpy as np
 import xarray as xr
 
 from geoglows_ecflow.resources.helper_functions import (
+    HRES_ENSEMBLE_MEMBER,
     configure_logging,
     load_forecast_run,
 )
@@ -28,11 +29,11 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     date = data["date"]
 
     vpu_nums = sorted(
-        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(output_dir, f"Qout_*_52.nc"))])
+        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(output_dir, f"Qout_*_{HRES_ENSEMBLE_MEMBER}.nc"))])
     )
 
     qout_1_51_files = sorted([os.path.join(output_dir, f"Qout_{vpu}.nc") for vpu in vpu_nums])
-    qout_52_files = sorted(glob.glob(os.path.join(output_dir, f"Qout_*_52.nc")))
+    qout_52_files = sorted(glob.glob(os.path.join(output_dir, f"Qout_*_{HRES_ENSEMBLE_MEMBER}.nc")))
     zarr_file_path = os.path.join(output_dir, f"Qout_{date}.zarr")
 
     if os.path.exists(zarr_file_path):
@@ -43,13 +44,15 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
         qout_1_51_files, combine="nested", concat_dim="river_id"
     ) as ds151:
         logging.info("Assigning the ensemble coordinate variable")
-        ds151 = ds151.assign_coords(ensemble=np.arange(1, 52))
+        ds151 = ds151.assign_coords(
+            ensemble=np.arange(1, HRES_ENSEMBLE_MEMBER)
+        )
         logging.info("Opening ensemble 52 dataset")
         with xr.open_mfdataset(
             qout_52_files, combine="nested", concat_dim="river_id"
         ) as ds52:
             logging.info("Assigning the ensemble coordinate variable")
-            ds52 = ds52.assign_coords(ensemble=52)
+            ds52 = ds52.assign_coords(ensemble=HRES_ENSEMBLE_MEMBER)
 
             logging.info("Concatenating 1-51 and 52 datasets")
             ds = xr.concat([ds151, ds52], dim="ensemble")
