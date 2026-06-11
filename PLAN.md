@@ -116,6 +116,14 @@ goes last.
 - ecFlow-server / suite-definition smoke tests (e.g. building the def in
   `--dry` mode).
 - README refresh (carried over from PR #27 review).
+- **Research (`rd`) mode is broken.** `mode='rd'` (documented in `README.md`)
+  is the only path with `follow_osuite=False`, and it crashes unconditionally
+  at `builder.py:324` (`barrier_hh.ymd`; `barrier_hh` is a `NominalTime`, which
+  has no `ymd`) — broken since the original 2024-07-25 authoring. That branch
+  is also the only place the `+7h`/`+9h`/`14:15` run timers exist, so the timer
+  constants can't be extracted/tested until this is resolved. Decide later:
+  fix research mode (needs the intended barrier-repeat wiring) or remove it (and
+  the timers + the `rd` choice) if unused.
 
 ---
 

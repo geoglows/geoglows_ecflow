@@ -16,6 +16,21 @@ from geoglows_ecflow.workflow.parts.epilogs import DummyEpilog
 from geoglows_ecflow.workflow.parts.repeats import calseq_repeat
 from geoglows_ecflow.workflow.parts.packages import PackageInstallers
 from geoglows_ecflow.workflow.comfies.partition import partition
+from geoglows_ecflow.resources.helper_functions import HRES_ENSEMBLE_MEMBER
+
+# Scheduler memory reservations (MB) for the heavier tasks.
+ENS_TASK_MEM_MB = 6000
+ARCHIVE_QINIT_MEM_MB = 4000
+
+
+def is_00z_cycle(nominal_time):
+    """Whether a nominal-time family is the 00Z cycle.
+
+    The 00Z cycle runs the full ensemble pipeline; the 12Z cycle runs a
+    reduced tree. The cycle is identified by the EMOS_BASE variable the
+    NominalTime family carries ("00" or "12").
+    """
+    return nominal_time.get_variable("EMOS_BASE").value() != "12"
 
 
 class Builder(GEOGLOWSBaseBuilder):
@@ -251,14 +266,14 @@ class Builder(GEOGLOWSBaseBuilder):
             n_prep_ens.trigger &= n_ret_hr.complete
             n_ens_ens = Family("ens_members")
             n_ens_ens.trigger = n_prep_ens.complete
-            n_ens_ens.add_variable("MEM", 6000)
+            n_ens_ens.add_variable("MEM", ENS_TASK_MEM_MB)
             n_ens.add(n_ret_ens)
-            if main_hh.get_variable("EMOS_BASE").value() != "12":
+            if is_00z_cycle(main_hh):
                 n_ens.add(n_prep_ens, n_ens_ens)
 
             for vpu in vpu_list:
                 # Create the ensemble tasks
-                for mem in reversed(range(1, 53)):
+                for mem in reversed(range(1, HRES_ENSEMBLE_MEMBER + 1)):
                     n_member = Family(f"{vpu}_{mem:02d}").add(
                         Task("ens_member"),
                         Variable("JOB_ID", f"job_{vpu}_{mem}"),
@@ -293,7 +308,7 @@ class Builder(GEOGLOWSBaseBuilder):
             n_forecast_warnings.trigger = n_vpus.complete
 
             n_archive_qinit = Task("archive_qinit")
-            n_archive_qinit.add_variable('MEM', 4000)
+            n_archive_qinit.add_variable('MEM', ARCHIVE_QINIT_MEM_MB)
             n_archive_qinit.add_variable('NCPUS', 12)
             n_archive_qinit.trigger = n_vpus.complete
 
@@ -323,7 +338,7 @@ class Builder(GEOGLOWSBaseBuilder):
             if not follow_osuite:
                 barrier_ymd = barrier_hh.ymd
 
-            if main_hh.get_variable("EMOS_BASE").value() != "12":
+            if is_00z_cycle(main_hh):
                 main_hh.add(
                     n_initialize,
                     n_hr,
@@ -348,7 +363,7 @@ class Builder(GEOGLOWSBaseBuilder):
             n_lag_arch_init.defuser = e_no_ecfs_archive
             n_lag_arch_fc = Task("arch_fc")
             n_lag_arch_fc.defuser = e_no_ecfs_archive
-            if main_hh.get_variable("EMOS_BASE").value() != "12":
+            if is_00z_cycle(main_hh):
                 lag_hh.add(n_lag_arch_init, n_lag_arch_fc)
             lag_hh.trigger = main_hh.complete.across("YMD")
             n_daily_lag.add(lag_hh)
