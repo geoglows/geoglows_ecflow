@@ -116,3 +116,55 @@ goes last.
 - ecFlow-server / suite-definition smoke tests (e.g. building the def in
   `--dry` mode).
 - README refresh (carried over from PR #27 review).
+
+---
+
+## Handoff — current status (resume Phase 4 on Ubuntu)
+
+**Done & committed (branch `workflow-simplification`, on fork `JakeGimenes`):**
+Phases 1–3 complete; 24 pytest tests pass. Phase 3 added `resources/zarr_io.py`
+(shared `write_dataset_to_zarr` + `DASK_ZARR_CONFIG`), `helper_functions`
+gained `load_forecast_run`, `RETURN_PERIODS`, and `configure_logging`.
+
+**Why Phase 4 moves to Ubuntu:** on the Windows dev box, `ecflow` is not
+pip-installable (no wheel) and `river-route` is not on PyPI, so `builder.py`
+can't even be imported and the `.ecf` scripts have no harness. The Ubuntu box
+has geoglows-ecflow installed, so the suite definition *can* be built and
+tested there.
+
+### Phase 4a — resources/ constants (verifiable; do first)
+- `HRES_ENSEMBLE_MEMBER = 52` in `helper_functions.py`. In `netcdf_to_zarr.py`:
+  `np.arange(1, HRES_ENSEMBLE_MEMBER)`, `f"Qout_*_{HRES_ENSEMBLE_MEMBER}.nc"`,
+  `ensemble=HRES_ENSEMBLE_MEMBER`.
+- `THICKNESS_THRESHOLDS = [20, 250, 1500, 10000, 30000]` in
+  `generate_esri_table.py`; drive the thickness ladder via `enumerate`
+  (levels 2..6). Covered by `tests/test_generate_esri_table.py` — extend it to
+  assert thickness too.
+- `MIN_STREAM_ORDER = 3` (`day_one_forecast.py:114`),
+  `FORECAST_WINDOW_DAYS = 10` (`generate_esri_table.py` 10-day filter).
+
+### Phase 4b — builder.py + nco_calc.ecf (verify on Ubuntu, expression-preserving)
+- `range(1, 53)` → `range(1, HRES_ENSEMBLE_MEMBER + 1)` (builder imports the
+  constant cross-package from `resources.helper_functions`).
+- `EMOS_BASE != "12"` gate (×3) → helper `is_00z_cycle(node)` (gates the
+  full-ensemble build; `"12"` = 12Z cycle, so `!= "12"` = 00Z).
+- Timers: `HRES_RUN_OFFSET_HOURS = 7`, `ENS_RUN_OFFSET_HOURS = 9`,
+  `BARRIER_DONE_TIME = "14:15"`. MEM: `ENS_TASK_MEM_MB = 6000`,
+  `ARCHIVE_QINIT_MEM_MB = 4000`.
+- Consolidate `self.config.get(...)` reads into one documented block.
+- `nco_calc.ecf` `grep -v ..._52.nc` (×3): wire an ecflow
+  `Variable("HRES_MEMBER", HRES_ENSEMBLE_MEMBER)` and reference
+  `%HRES_MEMBER%` — DECISION PENDING (vs. leaving `52` + a comment). Highest
+  risk: wrong wiring silently changes which member is excluded from the
+  ensemble mean.
+
+### To do on Ubuntu (before/with Phase 4b)
+1. Pull the deferred suite-definition smoke tests forward: build the def
+   in-memory and assert structure (e.g. 00Z cycle builds 52 ensemble tasks,
+   `HRES_MEMBER` variable resolves, run timers are +7h/+9h). These guard 4b.
+2. Make the `conftest.py` `river_route` shim conditional — only inject the
+   dummy when the real import fails — so the real package is used where present.
+3. Fix CI: `pip install -e ".[dev]"` cannot resolve `river-route` on PyPI, so
+   the workflow will fail at install. Run `pip show river-route ecflow` to find
+   their real source, then either point CI at that index or install test-only
+   deps. (`ecflow` is also an undeclared dependency — not in `pyproject.toml`.)
