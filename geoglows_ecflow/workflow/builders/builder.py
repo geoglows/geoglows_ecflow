@@ -58,31 +58,29 @@ class Builder(GEOGLOWSBaseBuilder):
         """
         super(Builder, self).build()
         cfg = self.config
-        # get suite configuration parameters from the deployment config file
-        suite_name = self.config.get("name")
-        mode = self.config.get("mode", choices=["prod", "test", "rd"])
-        first_date = self.config.get("first_date", type=int)
-        last_date = self.config.get("last_date", type=int, default="20300101")
-        first_barrier = self.config.get(
-            "first_barrier", type=int, default=first_date
-        )
-        archive_path = self.config.get("exparch")
-        suite_dir = self.config.get("workroot")
 
-        # initially empty suite, provided by parent
-        # class will be filled up with content here.
-        mars_nworkers = self.config.get("mars_workers", type=int, default=1)
-        ens_members = self.config.get("ens_members", type=int, default=51)
-        suite = self.suite
-        par_jobvars = self.jobvars.dest("parallel", fallback="PARENT")
+        # All tunable parameters read from the deployment config file are
+        # gathered here so what the suite exposes is visible at a glance.
+        # (exparch/workroot are consumed by the task scripts via templating,
+        # so they are intentionally not read here.)
+        suite_name = cfg.get("name")
+        mode = cfg.get("mode", choices=["prod", "test", "rd"])
+        first_date = cfg.get("first_date", type=int)
+        last_date = cfg.get("last_date", type=int, default="20300101")
+        first_barrier = cfg.get("first_barrier", type=int, default=first_date)
+        mars_nworkers = cfg.get("mars_workers", type=int, default=1)
+        ens_members = cfg.get("ens_members", type=int, default=51)
+        vpu_list = cfg.get("vpu_list", type=list, default=[])
 
-        # Selectable Trigger suites
+        # Operational suites this suite triggers off (normalized to lead "/").
         o_suite = cfg.get("o_suite", default="/o")
         mc_suite = cfg.get("mc_suite", default="/mc")
         if o_suite[0] != "/":
             o_suite = f"/{o_suite}"
         if mc_suite[0] != "/":
             mc_suite = f"/{mc_suite}"
+
+        suite = self.suite
 
         # these flags are not user-configurable but
         # depend on other flags
@@ -145,8 +143,6 @@ class Builder(GEOGLOWSBaseBuilder):
         )
 
         n_make.add_inlimit("make")
-
-        vpu_list = self.config.get("vpu_list", type=list, default=[])
 
         n_make.add(Variable("YMD", first_date))
         suite.add(n_make, n_admin)
