@@ -116,6 +116,11 @@ goes last.
 - ecFlow-server / suite-definition smoke tests (e.g. building the def in
   `--dry` mode).
 - README refresh (carried over from PR #27 review).
+- **comfies is incompatible with ecflow 5.17+.** Its node wrappers set
+  `Variable.parent` (`ooflow.py:1925`), which ecflow 5.17 made a read-only
+  built-in, so building any suite raises `AttributeError`. Worked around by
+  pinning `ecflow<5.17` in `environment.yml`; the real fix is to rename
+  comfies' parent-tracking attribute so it no longer collides.
 - **Research (`rd`) mode is broken.** `mode='rd'` (documented in `README.md`)
   is the only path with `follow_osuite=False`, and it crashes unconditionally
   at `builder.py:324` (`barrier_hh.ymd`; `barrier_hh` is a `NominalTime`, which
