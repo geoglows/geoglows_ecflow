@@ -6,11 +6,10 @@ from geoglows_ecflow.workflow.comfies.ooflow import RepeatDate, Defstatus
 from geoglows_ecflow.workflow.parts.nodes import Family, Task, NominalTime
 from geoglows_ecflow.workflow.parts.times import (
     t2t,
-    Timer,
     CronDateRefresh,
     CronDataAvailability,
 )
-from geoglows_ecflow.workflow.comfies.dateandtime import Date, TimeDelta, CalSeq
+from geoglows_ecflow.workflow.comfies.dateandtime import Date, CalSeq
 from geoglows_ecflow.workflow.parts.admin import AdminFamily
 from geoglows_ecflow.workflow.parts.epilogs import DummyEpilog
 from geoglows_ecflow.workflow.parts.repeats import calseq_repeat
@@ -64,7 +63,9 @@ class Builder(GEOGLOWSBaseBuilder):
         # (exparch/workroot are consumed by the task scripts via templating,
         # so they are intentionally not read here.)
         suite_name = cfg.get("name")
-        mode = cfg.get("mode", choices=["prod", "test", "rd"])
+        # Validate the run mode (consumed by suite.h via templating); the
+        # builder no longer branches on it, so the return is discarded.
+        cfg.get("mode", choices=["prod", "test"])
         first_date = cfg.get("first_date", type=int)
         last_date = cfg.get("last_date", type=int, default="20300101")
         first_barrier = cfg.get("first_barrier", type=int, default=first_date)
@@ -81,9 +82,6 @@ class Builder(GEOGLOWSBaseBuilder):
             mc_suite = f"/{mc_suite}"
 
         suite = self.suite
-
-        # these flags are not user-configurable but
-        # depend on other flags
 
         # admin family
         n_admin = Family("admin")
@@ -105,17 +103,6 @@ class Builder(GEOGLOWSBaseBuilder):
 
         with_webpush = False
         with_diss = False
-        follow_osuite = False
-        in_production = False
-        in_test = False
-
-        if mode == "prod":
-            in_production = True
-        if mode == "test":
-            in_test = True
-
-        if in_production or in_test:
-            follow_osuite = True
 
         # make family
         n_make = Family("make")
@@ -184,47 +171,38 @@ class Builder(GEOGLOWSBaseBuilder):
             (barrier_00, main_00, lag_00),
         ):
             cycle = str(main_hh.time.hh)
-            tnom = main_hh.time
 
-            if follow_osuite:
-                self.defs.add_extern(f"{mc_suite}/main:YMD")
-                self.defs.add_extern(f"{mc_suite}/main/{cycle}/fc0015d/fc")
-                self.defs.add_extern(f"{o_suite}/main:YMD")
-                self.defs.add_extern(f"{o_suite}/main/{cycle}/fc/model")
-                n_run_hr = Family("run_hr").add(
-                    Trigger(
-                        f"({o_suite}/main:YMD == /{suite_name}/barrier/daily:YMD "
-                        f"and {o_suite}/main/{cycle}/fc/model == complete) "
-                        f"or ({o_suite}/main:YMD > /{suite_name}/barrier/daily:YMD)"
-                    )
+            self.defs.add_extern(f"{mc_suite}/main:YMD")
+            self.defs.add_extern(f"{mc_suite}/main/{cycle}/fc0015d/fc")
+            self.defs.add_extern(f"{o_suite}/main:YMD")
+            self.defs.add_extern(f"{o_suite}/main/{cycle}/fc/model")
+            n_run_hr = Family("run_hr").add(
+                Trigger(
+                    f"({o_suite}/main:YMD == /{suite_name}/barrier/daily:YMD "
+                    f"and {o_suite}/main/{cycle}/fc/model == complete) "
+                    f"or ({o_suite}/main:YMD > /{suite_name}/barrier/daily:YMD)"
                 )
-                n_run_hr.add(
-                    Task("dummy").add(Trigger("0==1")).add(Defuser("1==1"))
+            )
+            n_run_hr.add(
+                Task("dummy").add(Trigger("0==1")).add(Defuser("1==1"))
+            )
+            n_run_en = Family("run_en").add(
+                Trigger(
+                    f"({mc_suite}/main:YMD == /{suite_name}/barrier/daily:YMD "
+                    f"and {mc_suite}/main/{cycle}/fc0015d/fc == complete) "
+                    f"or ({mc_suite}/main:YMD > /{suite_name}/barrier/daily:YMD)"
                 )
-                n_run_en = Family("run_en").add(
-                    Trigger(
-                        f"({mc_suite}/main:YMD == /{suite_name}/barrier/daily:YMD "
-                        f"and {mc_suite}/main/{cycle}/fc0015d/fc == complete) "
-                        f"or ({mc_suite}/main:YMD > /{suite_name}/barrier/daily:YMD)"
-                    )
-                )
-                n_run_en.add(
-                    Task("dummy").add(Trigger("0==1")).add(Defuser("1==1"))
-                )
+            )
+            n_run_en.add(
+                Task("dummy").add(Trigger("0==1")).add(Defuser("1==1"))
+            )
 
-                n_barrier_epilog = Family("last").add(
-                    Trigger(
-                        f"{o_suite}/main:YMD > /{suite_name}/barrier/daily:YMD"
-                    ),
-                    Task("sleep").add(Trigger("0==1"), Defuser("1==1")),
-                )
-
-            else:
-                n_run_hr = Family("run_hr")
-                n_run_en = Family("run_en")
-                n_run_hr.add(Task("dummy"), Timer(tnom + TimeDelta(hours=7)))
-                n_run_en.add(Task("dummy"), Timer(tnom + TimeDelta(hours=9)))
-                n_barrier_epilog = DummyEpilog(done=Timer("14:15"))
+            n_barrier_epilog = Family("last").add(
+                Trigger(
+                    f"{o_suite}/main:YMD > /{suite_name}/barrier/daily:YMD"
+                ),
+                Task("sleep").add(Trigger("0==1"), Defuser("1==1")),
+            )
 
             barrier_hh.add(n_run_hr, n_run_en)
             n_barrier_daily.add(barrier_hh)
@@ -240,8 +218,7 @@ class Builder(GEOGLOWSBaseBuilder):
             n_hr.add(n_ret_hr)
 
             n_ens = Family("ens")
-            if follow_osuite:
-                n_ens.trigger = n_run_en.complete.across("YMD")
+            n_ens.trigger = n_run_en.complete.across("YMD")
             n_ens.trigger &= n_initialize.complete
             n_ens.add(Variable("CONTEXT", "ens"))
             n_ret_ens = Family("retrieve")
@@ -330,9 +307,6 @@ class Builder(GEOGLOWSBaseBuilder):
             n_web_test.add(Task("web_push"))
             n_web_test.defuser = e_no_web_test
             n_web.add(n_web_prod, n_web_test)
-
-            if not follow_osuite:
-                barrier_ymd = barrier_hh.ymd
 
             if is_00z_cycle(main_hh):
                 main_hh.add(

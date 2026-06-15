@@ -72,8 +72,9 @@ river-route codebase, not the RAPID `main`.
 - [x] Magic numbers named: thickness ladder (`THICKNESS_THRESHOLDS`),
       stream-order (`MIN_STREAM_ORDER`), 10-day window (`FORECAST_WINDOW_DAYS`),
       `MEM` values (`ENS_TASK_MEM_MB` / `ARCHIVE_QINIT_MEM_MB`).
-- [ ] Timer offsets (`hours=7`/`hours=9`/`"14:15"`) — **blocked**: they live
-      only in the broken `rd`/research-mode branch (see follow-ups).
+- [x] Timer offsets (`hours=7`/`hours=9`/`"14:15"`) — **resolved by deletion**:
+      they lived only in the broken `rd`/research-mode branch, which has been
+      removed (see follow-ups). Nothing to extract; revisit if `rd` returns.
 - [x] Consolidate `self.config.get(...)` reads in `builder.py` into one
       documented block.
 
@@ -87,29 +88,29 @@ river-route codebase, not the RAPID `main`.
   built-in, so building any suite raises `AttributeError`. Worked around by
   pinning `ecflow<5.17` in `environment.yml`; the real fix is to rename
   comfies' parent-tracking attribute so it no longer collides.
-- **Research (`rd`) mode is broken.** `mode='rd'` (documented in `README.md`)
-  is the only path with `follow_osuite=False`, and it crashes unconditionally
-  at `builder.py:324` (`barrier_hh.ymd`; `barrier_hh` is a `NominalTime`, which
-  has no `ymd`) — broken since the original 2024-07-25 authoring. That branch
-  is also the only place the `+7h`/`+9h`/`14:15` run timers exist, so the timer
-  constants can't be extracted/tested until this is resolved. Decide later:
-  fix research mode (needs the intended barrier-repeat wiring) or remove it (and
-  the timers + the `rd` choice) if unused.
+- **Research (`rd`) mode removed.** `mode='rd'` was the only path with
+  `follow_osuite=False` and crashed unconditionally at `barrier_hh.ymd`
+  (`barrier_hh` is a `NominalTime`, which has no `ymd`) — broken since the
+  original 2024-07-25 authoring, so never usable. Removed the `rd` choice, the
+  `follow_osuite`/`in_production`/`in_test` flags, the non-`follow_osuite`
+  branch (the `+7h`/`+9h`/`14:15` run timers), and the dead crash line. `prod`
+  and `test` are the remaining modes. If research mode is wanted again, it
+  should be reintroduced correctly (with the intended barrier-repeat wiring).
 
 ---
 
 ## Current status
 
 **Branch `workflow-simplification`** (fork `JakeGimenes`), open as a PR against
-`rapid-to-river-route`. Phases 1–3 complete; Phase 4 complete except the two
-items flagged above (`nco_calc.ecf` decision, and the timer constants which are
-blocked on the `rd`-mode decision). **33 pytest tests pass** — the resources
-tests run anywhere; the suite-definition tests require `ecflow` (conda-forge).
+`rapid-to-river-route`. Phases 1–3 complete; Phase 4 complete except the
+`nco_calc.ecf` decision. The timer constants are resolved by deletion (the
+`rd`/research mode that owned them has been removed). **33 pytest tests pass** —
+the resources tests run anywhere; the suite-definition tests require `ecflow`
+(conda-forge).
 
 The vendored `comfies` framework got the minimum Python-3.12+ compatibility
 fixes needed to import it at all (`imp` → `importlib`, `pkg_resources` →
 `packaging`); everything else in `comfies/*` is unchanged.
 
-**Remaining actionable work:** the `nco_calc.ecf` `HRES_MEMBER` decision, the
-`rd`-mode fix-or-remove decision (which unblocks the timer constants), and the
+**Remaining actionable work:** the `nco_calc.ecf` `HRES_MEMBER` decision and the
 README refresh.
