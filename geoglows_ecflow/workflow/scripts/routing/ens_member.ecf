@@ -1,0 +1,25 @@
+#!/bin/bash -l
+%manual
+
+    Ensemble Member for Routing Workflow
+
+%end
+
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <sim.h>
+%includeonce <routing_venv.h>
+
+
+mkdir -p $sim_fcdir/execute
+mkdir -p $sim_fcdir/subprocess
+
+vpu_ens_pair=%FAMILY1%
+ens_member="${vpu_ens_pair##*_}"
+if [[ ! -f $sim_fcdir/${ens_member#0}.runoff.nc ]];then
+    echo "Forcing file does not exist"
+    false
+fi
+
+python3 -m geoglows_ecflow.resources.run_river_route_forecast $sim_fcdir %JOB_ID%

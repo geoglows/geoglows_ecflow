@@ -1,4 +1,4 @@
-# ECFLOW RAPID workflow for GEOGloWS
+# ECFLOW workflow for GEOGloWS streamflow forecasting
 
 ![GEOGloWS VPUCode Coverage](images/geoglows_vpucode_coverage.png)
 *Coverage of GEOGloWS VPUCode basins. Source: [Riley Hales](mailto:rchales@byu.edu).*
@@ -18,8 +18,7 @@ pip install -e .
 
 ## Non-Python Dependencies
 
-- rapid>=20210423
-- ecflow>=5.11.3
+- ecflow>=5.11.3,<5.17
 - nco>=5.1.8
 - ksh>=2020.0.0
 
@@ -33,7 +32,7 @@ pip install -e .
     mars_bond_id='251'
     staticdata = '/path/to/assets'
     workroot = f'/path/to/workroot'
-    mode = 'test'  # suite mode ('rd':research, 'test':test, 'prod':production)
+    mode = 'test'  # suite mode ('test':test, 'prod':production)
     expver = 'geoglows'
     exparch = '/path/to/archive'
     iniexparch = '/path/to/init_archive'
@@ -81,18 +80,10 @@ pip install -e .
     )
 
     # --------------------------------------------
-    # Configuration of EFAS software packages
+    # Configuration of GEOGloWS software packages
     # which are installed together with the suite.
     # --------------------------------------------
     packages = dict(
-        model = dict(
-            srcdir = 'git+https://github.com/c-h-david/rapid.git@20210423',
-        ),
-
-        petsc = dict(
-            srcdir = srcroot + 'petsc_reqs',
-        ),
-
         scripts = dict(
             srcdir = srcroot + 'scripts',
         ),
@@ -123,19 +114,26 @@ ecflow_start.sh -d /path/to/ecflow_home
 
 ## Local run example
 
-```Python
-import subprocess
-from geoglows_ecflow import geoglows_forecast_job, client
+Generate the suite definition (via CLI or Python):
 
-# Start server
-subprocess.run(['bash', '/path/to/local_server_start.sh'])
+```bash
+gdeploy --config /path/to/config.cfg
+```
 
-# Create definition
-geoglows_forecast_job.create("/path/to/config.cfg")
+```python
+from geoglows_ecflow.workflow.create import main
+main("/path/to/config.cfg")
+```
 
-# Add definition to server
-client.add_definition("/path/to/definition.def", "<HOST>:<PORT>")
+Start a local ecflow server, then load and begin the suite:
 
-# Begin definition
-client.begin("definition_name")
+```bash
+bash /path/to/local_ecflow_start.sh
+```
+
+```python
+from geoglows_ecflow import client
+
+client.add_definition("/path/to/deploy_dir/suite.def", "localhost:2500")
+client.begin("suite_name", "localhost:2500")
 ```

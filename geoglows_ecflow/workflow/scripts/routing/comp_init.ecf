@@ -1,0 +1,14 @@
+#!/bin/bash -l
+%manual
+
+    Compute initial conditions for the next forecast cycle
+
+%end
+
+%includeonce <ecflow_bash.h>
+%includeonce <python3.h>
+%includeonce <ens.h>
+%includeonce <routing_venv.h>
+
+
+python3 -m geoglows_ecflow.resources.compute_init_flows $ens_fcdir %VPU%

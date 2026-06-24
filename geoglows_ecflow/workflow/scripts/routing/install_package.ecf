@@ -3,7 +3,7 @@
 %includeonce <suite.h>
 %includeonce <deploy_config.h>
 %includeonce <comfies.h>
-%includeonce <routing_venv.h>
+
 %includeonce <git.h>
 
 # Where is the source code of the package.
@@ -76,16 +76,13 @@ _configure_
 for f in $(ls $installation_scripts 2>/dev/null); do
     echo "preprocessing installation script $f"
     copp $f > $f.tmp
-    mv $f.tmp $f
-    cat $f
-done
+    cat $f.tmp
 %nopp
 [[ ! -z "$STHOST" ]] && sed -i 's!%STHOST.*%!${STHOST}!g' $f.tmp
 %end
     mv $f.tmp $f
     cat $f
 done
-
 # ----------------------------------------------------------------
 # Run the package installation
 # ----------------------------------------------------------------
@@ -97,13 +94,14 @@ done
 if [[ -f _setup_ ]]; then
 . '_setup_'
 fi
-
+%includeonce <routing_venv.h>
 
 dest_dir=$suite_dir/lib/%PACKAGE%
 make uninstall PREFIX=$dest_dir LIBDIR=$suite_libdir
 make install PREFIX=$dest_dir LIBDIR=$suite_libdir > install_log
 cat install_log
 install_nfiles=$(cat install_log | grep '^installing ' | wc -l)
+%include <remove_conda.h>
 ecflow_client --label=install "$install_nfiles files installed in $dest_dir"
 
 cd -

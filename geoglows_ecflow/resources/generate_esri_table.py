@@ -1,40 +1,53 @@
 import argparse
 import logging
 import os
-import sys
 
 import netCDF4 as nc
 import pandas as pd
 import xarray as xr
 
+from geoglows_ecflow.resources.helper_functions import (
+    RETURN_PERIODS,
+    configure_logging,
+)
+
+# Only the first 10 days of the forecast are summarized in the style table.
+FORECAST_WINDOW_DAYS = 10
+
+# Mean-flow thresholds (m^3/s) that drive the map line-thickness ladder. Flows
+# below the first threshold get thickness 1; each threshold crossed bumps the
+# thickness by one (levels 2..6).
+THICKNESS_THRESHOLDS = [20, 250, 1500, 10000, 30000]
+
 
 def postprocess_vpu_forecast_directory(
-    rapid_output: str,
+    output_dir: str,
     returnperiods: str,
-    vpu: int or str,
+    vpu: int | str,
 ):
     # creates file name for the csv file
     date_string = os.path.basename(
-        os.path.dirname(rapid_output)
+        os.path.dirname(output_dir)
     )  # should be a date in YYYYMMDDHH format
     style_table_file_name = f"mapstyletable_{vpu}_{date_string}.parquet"
-    if os.path.exists(os.path.join(rapid_output, style_table_file_name)):
+    if os.path.exists(os.path.join(output_dir, style_table_file_name)):
         logging.info(f"Style table already exists: {style_table_file_name}")
         return
     logging.info(f"Creating style table: {style_table_file_name}")
 
-    nces_output_filename = os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+    nces_output_filename = os.path.join(output_dir, f"nces_avg_{vpu}.nc")
     # read the date and COMID lists from one of the netcdfs
     with xr.open_dataset(nces_output_filename) as ds:
-        comids = ds["rivid"][:].values
+        comids = ds["river_id"][:].values
         dates = pd.to_datetime(ds["time"][:].values)
-        mean_flows = ds["Qout"][:].values.round(2)
+        mean_flows = ds["Q"][:].values.round(2)
 
     mean_flow_df = pd.DataFrame(mean_flows, columns=comids, index=dates)
 
     # limit both dataframes to the first 10 days
     mean_flow_df = mean_flow_df[
-        mean_flow_df.index <= mean_flow_df.index[0] + pd.Timedelta(days=10)
+        mean_flow_df.index
+        <= mean_flow_df.index[0] + pd.Timedelta(days=FORECAST_WINDOW_DAYS)
     ]
 
     # creating pandas dataframe with return periods
@@ -43,32 +56,21 @@ def postprocess_vpu_forecast_directory(
     with nc.Dataset(rp_path, "r") as rp_ncfile:
         rp_df = pd.DataFrame(
             {
-                "return_2": rp_ncfile.variables["rp2"][:],
-                "return_5": rp_ncfile.variables["rp5"][:],
-                "return_10": rp_ncfile.variables["rp10"][:],
-                "return_25": rp_ncfile.variables["rp25"][:],
-                "return_50": rp_ncfile.variables["rp50"][:],
-                "return_100": rp_ncfile.variables["rp100"][:],
+                f"return_{rp}": rp_ncfile.variables[f"rp{rp}"][:]
+                for rp in RETURN_PERIODS
             },
-            index=rp_ncfile.variables["rivid"][:],
+            index=rp_ncfile.variables["river_id"][:],
         )
 
     mean_thickness_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
     mean_thickness_df[:] = 1
-    mean_thickness_df[mean_flow_df >= 20] = 2
-    mean_thickness_df[mean_flow_df >= 250] = 3
-    mean_thickness_df[mean_flow_df >= 1500] = 4
-    mean_thickness_df[mean_flow_df >= 10000] = 5
-    mean_thickness_df[mean_flow_df >= 30000] = 6
+    for level, threshold in enumerate(THICKNESS_THRESHOLDS, start=2):
+        mean_thickness_df[mean_flow_df >= threshold] = level
 
     mean_ret_per_df = pd.DataFrame(columns=comids, index=dates, dtype=int)
     mean_ret_per_df[:] = 0
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_2"], axis=1)] = 2
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_5"], axis=1)] = 5
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_10"], axis=1)] = 10
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_25"], axis=1)] = 25
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_50"], axis=1)] = 50
-    mean_ret_per_df[mean_flow_df.gt(rp_df["return_100"], axis=1)] = 100
+    for rp in RETURN_PERIODS:
+        mean_ret_per_df[mean_flow_df.gt(rp_df[f"return_{rp}"], axis=1)] = rp
 
     mean_flow_df = mean_flow_df.stack().to_frame().rename(columns={0: "mean"})
     mean_thickness_df = (
@@ -84,7 +86,7 @@ def postprocess_vpu_forecast_directory(
             df, left_index=True, right_index=True
         )
 
-    maptable_outdir = os.path.join(rapid_output, "map_style_tables")
+    maptable_outdir = os.path.join(output_dir, "map_style_tables")
     if not os.path.exists(maptable_outdir):
         os.makedirs(maptable_outdir)
 
@@ -109,22 +111,17 @@ if __name__ == "__main__":
         help="Path to the daily workspace directory, named in YYYYMMDDHH "
         "format, containing (1) *.runoff.nc IFS forecast files, "
         "(2) an output directory of routed discharge netcdfs, "
-        "(3) symlinks to the rapid inputs and return periods directories",
+        "(3) symlinks to the per-VPU inputs and return periods directories",
     )
     parser.add_argument("vpu", nargs=1, help="id number of vpu to process")
     args = parser.parse_args()
     workspace = args.workspace[0]
-    rapid_output = os.path.join(workspace, "output")
+    output_dir = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
     vpu = args.vpu[0]
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        stream=sys.stdout,
-    )
+    configure_logging()
 
-    params = [rapid_output, returnperiods, vpu]
+    params = [output_dir, returnperiods, vpu]
 
     postprocess_vpu_forecast_directory(*params)

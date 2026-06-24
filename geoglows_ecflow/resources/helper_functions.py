@@ -2,11 +2,47 @@
 # See: spt_compute (https://github.com/erdc/spt_compute)
 # Updated by Michael Souffront, 2023
 
+import json
 import os
 import sys
 import re
 import logging as log
-from glob import glob
+
+# Return periods (years) used throughout the forecast post-processing. Defined
+# once here and imported by the modules that build return-period ladders.
+RETURN_PERIODS = [2, 5, 10, 25, 50, 100]
+
+# The high-resolution (HRES) forecast is always ensemble member 52. Members
+# 1-51 are the ensemble perturbations. Defined once here and imported wherever
+# the workflow needs to single out (or exclude) the HRES member.
+HRES_ENSEMBLE_MEMBER = 52
+
+# Shared logging format so every resource module logs identically.
+LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
+LOG_DATEFMT = "%Y-%m-%d %H:%M:%S"
+
+
+def configure_logging(level: str = "INFO") -> None:
+    """Configure root logging with the shared format, writing to stdout."""
+    log.basicConfig(
+        level=level,
+        format=LOG_FORMAT,
+        datefmt=LOG_DATEFMT,
+        stream=sys.stdout,
+    )
+
+
+def load_forecast_run(workspace: str) -> dict:
+    """Load and parse <workspace>/forecast_run.json.
+
+    Args:
+        workspace (str): Directory containing forecast_run.json.
+
+    Returns:
+        dict: The parsed forecast-run manifest.
+    """
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
+        return json.load(f)
 
 
 def create_logger(
@@ -22,13 +58,13 @@ def create_logger(
     else:
         handler = log.StreamHandler(sys.stdout)
 
-        handler.setLevel(level)
-        handler.setFormatter(
-            log.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        )
+    handler.setLevel(level)
+    handler.setFormatter(
+        log.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
 
-        # Add the handler to the logger
-        logger.addHandler(handler)
+    # Add the handler to the logger
+    logger.addHandler(handler)
 
     return logger
 
@@ -67,7 +103,7 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     Get a list of vpucodes from the input directory.
 
     Args:
-        input_directory (str): Path to the rapid input directory.
+        input_directory (str): Path to the per-VPU input directory.
 
     Returns:
         list[str]: List of valid directories (vpucodes).
@@ -81,28 +117,6 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
         else:
             print(f"{name} is not a directory or a 3-digit VPU. Skipping...")
     return valid_input_directories
-
-
-def find_current_rapid_output(
-    forecast_directory: str, vpu: str | int
-) -> list | None:
-    """Finds output from RAPID for a specific VPU.
-
-    Args:
-        forecast_directory (str): Path to forecast directory.
-        vpu (str | int): VPU code.
-
-    Returns:
-        list | None: List of paths to RAPID output files or None if not found.
-    """
-    if os.path.exists(forecast_directory):
-        basin_files = glob(
-            os.path.join(forecast_directory, f"Qout_{vpu}_*.nc")
-        )
-        if len(basin_files) > 0:
-            return basin_files
-    # there are none found
-    return None
 
 
 def get_ensemble_number_from_forecast(forecast_name: str) -> int:

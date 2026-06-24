@@ -2,33 +2,21 @@ import datetime
 import glob
 import logging
 import os
-import sys
 import argparse
 import numpy as np
 import pandas as pd
 import xarray as xr
 import netCDF4 as nc
-import dask
-from numcodecs import Blosc
 
+from geoglows_ecflow.resources.helper_functions import (
+    RETURN_PERIODS,
+    configure_logging,
+)
+from geoglows_ecflow.resources.zarr_io import write_dataset_to_zarr
 
-def merge_forecast_qout_files(rapid_output: str, vpu: str | int):
-    # list the forecast files
-    prediction_files = sorted(
-        glob.glob(os.path.join(rapid_output, f"Qout_{vpu}_*.nc"))
-    )
-
-    # merge them into a single file joined by ensemble number
-    ensemble_index_list = []
-    qout_datasets = []
-    for forecast_nc in prediction_files:
-        ensemble_index_list.append(
-            int(os.path.basename(forecast_nc)[:-3].split("_")[-1])
-        )
-        qout_datasets.append(xr.open_dataset(forecast_nc).Qout)
-    return xr.concat(
-        qout_datasets, pd.Index(ensemble_index_list, name="ensemble")
-    )
+# Only streams of at least this Strahler order are checked against return
+# periods for the warnings summary (smaller headwater streams are skipped).
+MIN_STREAM_ORDER = 3
 
 
 def check_for_return_period_flow(
@@ -36,59 +24,38 @@ def check_for_return_period_flow(
 ):
     max_flow = max(forecasted_flows_df["means"])
 
-    # temporary dates
-    date_r5 = ""
-    date_r10 = ""
-    date_r25 = ""
-    date_r50 = ""
-    date_r100 = ""
+    # retrieve return period flow levels from the dataframe
+    thresholds = {
+        rp: float(rp_data[f"rp{rp}"].values[0]) for rp in RETURN_PERIODS
+    }
 
-    # retrieve return period flow levels from dataframe
-    r2 = float(rp_data["rp2"].values[0])
-    r5 = float(rp_data["rp5"].values[0])
-    r10 = float(rp_data["rp10"].values[0])
-    r25 = float(rp_data["rp25"].values[0])
-    r50 = float(rp_data["rp50"].values[0])
-    r100 = float(rp_data["rp100"].values[0])
-
-    # then compare the timeseries to the return period thresholds
-    if max_flow >= r2:
-        date_r2 = get_time_of_first_exceedance(forecasted_flows_df, r2)
     # if the flow is not larger than the smallest return period, return the
     # dataframe without appending anything
-    else:
+    if max_flow < thresholds[RETURN_PERIODS[0]]:
         return largeflows_df
 
-    # check the rest of the return period flow levels
-    if max_flow >= r5:
-        date_r5 = get_time_of_first_exceedance(forecasted_flows_df, r5)
-    if max_flow >= r10:
-        date_r10 = get_time_of_first_exceedance(forecasted_flows_df, r10)
-    if max_flow >= r25:
-        date_r25 = get_time_of_first_exceedance(forecasted_flows_df, r25)
-    if max_flow >= r50:
-        date_r50 = get_time_of_first_exceedance(forecasted_flows_df, r50)
-    if max_flow >= r100:
-        date_r100 = get_time_of_first_exceedance(forecasted_flows_df, r100)
+    # compare the timeseries to each return period threshold, ascending, so the
+    # progressive masking inside get_time_of_first_exceedance is preserved
+    exceedance_dates = {}
+    for rp in RETURN_PERIODS:
+        if max_flow >= thresholds[rp]:
+            exceedance_dates[rp] = get_time_of_first_exceedance(
+                forecasted_flows_df, thresholds[rp]
+            )
+        else:
+            exceedance_dates[rp] = ""
 
-    new_row = pd.DataFrame(
-        {
-            "comid": rp_data.index[0],
-            "stream_order": stream_order,
-            "max_forecasted_flow": round(max_flow, 2),
-            "date_exceeds_return_period_2": date_r2,
-            "date_exceeds_return_period_5": date_r5,
-            "date_exceeds_return_period_10": date_r10,
-            "date_exceeds_return_period_25": date_r25,
-            "date_exceeds_return_period_50": date_r50,
-            "date_exceeds_return_period_100": date_r100,
-        },
-        index=[0],
-    )
+    row = {
+        "comid": rp_data.index[0],
+        "stream_order": stream_order,
+        "max_forecasted_flow": round(max_flow, 2),
+    }
+    for rp in RETURN_PERIODS:
+        row[f"date_exceeds_return_period_{rp}"] = exceedance_dates[rp]
 
-    largeflows_df = pd.concat([largeflows_df, new_row], ignore_index=True)
+    new_row = pd.DataFrame(row, index=[0])
 
-    return largeflows_df
+    return pd.concat([largeflows_df, new_row], ignore_index=True)
 
 
 def get_time_of_first_exceedance(forecasted_flows_df, flow):
@@ -100,8 +67,8 @@ def get_time_of_first_exceedance(forecasted_flows_df, flow):
 
 def postprocess_vpu(
     vpu,
-    rapid_input,
-    rapid_output,
+    input_dir,
+    output_dir,
     return_periods_dir,
     forecast_records,
 ):
@@ -126,13 +93,13 @@ def postprocess_vpu(
     logging.info("  merging forecasts")
 
     merged_forecasts = xr.open_dataset(
-        os.path.join(rapid_output, f"nces_avg_{vpu}.nc")
+        os.path.join(output_dir, f"nces_avg_{vpu}.nc")
     )
 
     # collect the times and comids from the forecasts
     logging.info("  reading info from forecasts")
     times = pd.to_datetime(pd.Series(merged_forecasts.time))
-    comids = pd.Series(merged_forecasts.rivid)
+    comids = pd.Series(merged_forecasts.river_id)
     tomorrow = times[0] + pd.Timedelta(days=1)
     year = times[0].strftime("%Y")
 
@@ -145,10 +112,11 @@ def postprocess_vpu(
 
     # read the list of large streams
     logging.info("  creating dataframe of large streams")
-    streams_file_path = os.path.join(rapid_input, "master_table.parquet")
+    streams_file_path = os.path.join(input_dir, "master_table.parquet")
     streams_df = pd.read_parquet(streams_file_path)
     large_vpu_streams_df = streams_df[
-        (streams_df["VPUCode"] == int(vpu)) & ((streams_df["strmOrder"] >= 3))
+        (streams_df["VPUCode"] == int(vpu))
+        & (streams_df["strmOrder"] >= MIN_STREAM_ORDER)
     ]
 
     # get the list of comids
@@ -161,7 +129,7 @@ def postprocess_vpu(
     # now process the mean flows for each river in the vpu
     for comid in comids:
         # compute the timeseries of average flows
-        means = merged_forecasts.sel(rivid=comid).Qout.values.flatten()
+        means = merged_forecasts.sel(river_id=comid).Q.values.flatten()
 
         # put it in a dataframe with the times series
         forecasted_flows = (
@@ -191,7 +159,7 @@ def postprocess_vpu(
     logging.info("  updating the forecast records file")
     try:
         update_forecast_records(
-            vpu, forecast_records, rapid_output, year, first_day_flows, times
+            vpu, forecast_records, output_dir, year, first_day_flows, times
         )
     except Exception as e:
         logging.info("  unexpected error updating the forecast records")
@@ -208,7 +176,7 @@ def postprocess_vpu(
         .replace({"": np.nan})
     )
     largeflows.to_parquet(
-        os.path.join(rapid_output, f"forecastwarnings_{vpu}.parquet")
+        os.path.join(output_dir, f"forecastwarnings_{vpu}.parquet")
     )
 
     return
@@ -231,31 +199,25 @@ def update_forecast_records(
         reference = nc.Dataset(reference)
         # make a new record file
         record = nc.Dataset(record_path, "w")
-        # copy the right dimensions and variables
+        # copy the right dimensions and variables. lat/lon are deliberately
+        # not carried into the record: they're dropped during the zarr
+        # conversion below, and river-route's native output doesn't
+        # necessarily include them.
         record.createDimension("time", None)
-        record.createDimension("rivid", reference.dimensions["rivid"].size)
+        record.createDimension("river_id", reference.dimensions["river_id"].size)
         record.createVariable(
             "time", reference.variables["time"].dtype, dimensions=("time",)
         )
         record.createVariable(
-            "lat", reference.variables["lat"].dtype, dimensions=("rivid",)
+            "river_id", reference.variables["river_id"].dtype, dimensions=("river_id",)
         )
         record.createVariable(
-            "lon", reference.variables["lon"].dtype, dimensions=("rivid",)
-        )
-        record.createVariable(
-            "rivid", reference.variables["rivid"].dtype, dimensions=("rivid",)
-        )
-        record.createVariable(
-            "Qout",
-            reference.variables["Qout"].dtype,
-            dimensions=("time", "rivid"),
+            "Q",
+            reference.variables["Q"].dtype,
+            dimensions=("time", "river_id"),
             fill_value=np.nan,
         )
-        # and also prepopulate the lat, lon, and rivid fields
-        record.variables["rivid"][:] = reference.variables["rivid"][:]
-        record.variables["lat"][:] = reference.variables["lat"][:]
-        record.variables["lon"][:] = reference.variables["lon"][:]
+        record.variables["river_id"][:] = reference.variables["river_id"][:]
 
         # set the time variable attributes
         record.variables["time"].setncattr(
@@ -291,7 +253,7 @@ def update_forecast_records(
     end_time_index = start_time_index + len(first_day_flows[0])
     # convert all those saved flows to a np array and write to the netcdf
     first_day_flows = np.asarray(first_day_flows)
-    record_netcdf.variables["Qout"][
+    record_netcdf.variables["Q"][
         start_time_index:end_time_index, :
     ] = first_day_flows.T
 
@@ -313,48 +275,16 @@ def netcdf_forecast_record_to_zarr(record_path) -> None:
     zarr_path = record_path.replace(".nc", ".zarr")
     record_nc = xr.open_dataset(record_path)
     
-    with dask.config.set(**{
-        'array.slicing.split_large_chunks': False,
-        # set the max chunk size to 5MB
-        'array.chunk-size': '40MB',
-        # use the threads scheduler
-        'scheduler': 'threads',
-        # set the maximum memory target usage to 90% of total memory
-        'distributed.worker.memory.target': 0.80,
-        # do not allow spilling to disk
-        'distributed.worker.memory.spill': False,
-        # specify the amount of resources to allocate to dask workers
-        'distributed.worker.resources': {
-            'memory': 3e9,  # 1e9=1GB, this is the amount per worker
-            'cpu': os.cpu_count(),  # num CPU per worker
-        }
-    }):
-    #set compressing information
-        logging.info("Configuring compression")
-        
-        #if we get rid of dask, we can get rid of the compressor
-        #the compressor throws an error for version 3 so specify version 2
-        compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
-        encoding = {'Qout': {"compressor": compressor}}
-        
-        logging.info("Writing to zarr")
-        (
-            record_nc
-            .drop_vars(["lat", "lon"])
-                    .chunk({
-                        "time": -1,
-                        "rivid": "auto"
-                    })
-                    .to_zarr(
-                        zarr_path,
-                        consolidated=True,
-                        encoding=encoding,
-                        mode = 'w',
-                        zarr_version=2
-                    )
-                )
-
-        record_nc.close()
+    logging.info("Writing to zarr")
+    write_dataset_to_zarr(
+        record_nc,
+        zarr_path,
+        {"time": -1, "river_id": "auto"},
+        drop_vars=["lat", "lon"],
+        mode="w",
+        zarr_version=2,
+    )
+    record_nc.close()
     logging.info("Done")
 
 
@@ -362,34 +292,31 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "workspace",
-        nargs=1,
         help="path to the daily workspace directory",
     )
     parser.add_argument(
         "vpu",
-        nargs=1,
         help="VPU number",
     )
     parser.add_argument(
         "output_dir",
-        nargs=1,
         help="path to the forecast records output directory",
     )
 
     args = parser.parse_args()
-    workspace = args.workspace[0]
-    vpu = args.vpu[0]
-    rapid_input = os.path.join(workspace, "input")
-    rapid_output = os.path.join(workspace, "output")
+    workspace = args.workspace
+    vpu = args.vpu
+    input_dir = os.path.join(workspace, "input")
+    output_dir = os.path.join(workspace, "output")
     returnperiods = os.path.join(workspace, "return_periods_dir")
-    forecast_records = args.output_dir[0]
-    rapid_output = os.path.join(workspace, "output")
+    forecast_records = args.output_dir
+    output_dir = os.path.join(workspace, "output")
 
     # start logging
-    logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+    configure_logging()
 
     postprocess_vpu(
-        vpu, rapid_input, rapid_output, returnperiods, forecast_records
+        vpu, input_dir, output_dir, returnperiods, forecast_records
     )
 
     logging.info("Finished at " + datetime.datetime.now().strftime("%c"))

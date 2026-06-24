@@ -1,7 +1,7 @@
 [project]
 name = "geoglows_ecflow"
 version = "3.1.1"
-description = "ECFLOW RAPID workflow for GEOGloWS"
+description = "ECFLOW workflow for GEOGloWS streamflow forecasting"
 authors = [
     { name = "Michael Souffront", email = "msouffront@aquaveo.com" },
     { name = "Riley Hales", email = "rchales@byu.edu" },
@@ -17,11 +17,21 @@ dependencies = [
     "fastparquet>=2023.8.0",
     "zarr>=2.16.1",
     "boto3>=1.28.65",
-    "basininflow>=0.13.0",
+    "river-route>=2.1.1",
+    "packaging>=21.0",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.14"
 readme = "README.md"
 license = { text = "BSD-3-Clause" }
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.coverage.report]
 show_missing = true
