@@ -38,12 +38,4 @@ case $context in
         ecpds -echost aux -destination CEMS_Flood_Glofas -force -lifetime 7d -source Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz -target /tcyc/Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz
         ecpds -echost aux -destination CEMS_Flood_Rapid -force -lifetime 7d -source Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz -target Runoff.${ens_ymd}.${ens_base}.exp${ens_mars_expver}.Fgrid.netcdf.tar.gz
         ;;
-
-#    rapid)
-#          for file in $ens_fcdir/*.tar.gz;do
-              #ecpds -echost aux -destination CEMS_Flood_Glofas -force -lifetime 7d -source $file -target /tcyc/rapid_${ens_ymd}_${ens_base}/${file##*/}
-              #ecpds -echost aux -destination CEMS_Flood_Rapid -force -lifetime 7d -source $file -target rapid_${ens_ymd}_${ens_base}/${file##*/}
-#          done
-
-#    ;;
 esac

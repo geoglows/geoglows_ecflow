@@ -1,7 +1,7 @@
 #!/bin/bash -l
 %manual
 
-    Prepatory Task for the rapid workflow
+    Preparatory Task for the routing workflow
 
 
 
@@ -11,14 +11,13 @@
 %includeonce <ecflow_bash.h>
 %includeonce <python3.h>
 %includeonce <sim.h>
-%includeonce <rapid_venv.h>
+%includeonce <routing_venv.h>
 
 
 mkdir -p $sim_fcdir
-mkdir -p $sim_fcdir/inflows
 
 ln -snf $suite_staticdata/input $sim_fcdir/input
 
-python3 -m geoglows_ecflow.resources.prep_rapid_forecast $sim_fcdir
+python3 -m geoglows_ecflow.resources.prep_river_route_forecast $sim_fcdir
 
 %include <remove_conda.h>

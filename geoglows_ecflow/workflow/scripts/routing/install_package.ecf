@@ -94,7 +94,7 @@ done
 if [[ -f _setup_ ]]; then
 . '_setup_'
 fi
-%includeonce <rapid_venv.h>
+%includeonce <routing_venv.h>
 
 dest_dir=$suite_dir/lib/%PACKAGE%
 make uninstall PREFIX=$dest_dir LIBDIR=$suite_libdir

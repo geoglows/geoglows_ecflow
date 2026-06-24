@@ -9,8 +9,8 @@
 %includeonce <ens.h>
 %includeonce <nco.h>
 
-echo "Looking for rapid outputs in directory: $ens_rapid_output"
-cd $ens_rapid_output
+echo "Looking for routing outputs in directory: $ens_output"
+cd $ens_output
 
 vpu_number=%VPU%
 echo "Your VPU number is ${vpu_number}"

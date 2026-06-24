@@ -23,20 +23,20 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
     Converts the netcdf forecast files to zarr.
 
     Args:
-        workspace (str): Path to rapid_run.json base directory.
+        workspace (str): Path to forecast_run.json base directory.
     """
-    with open(os.path.join(workspace, "rapid_run.json"), "r") as f:
+    with open(os.path.join(workspace, "forecast_run.json"), "r") as f:
         data = json.load(f)
-        rapid_output = data["output_dir"]
+        output_dir = data["output_dir"]
         date = data["date"]
 
     vpu_nums = sorted(
-        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(rapid_output, f"Qout_*_52.nc"))])
+        set([os.path.basename(x).split("_")[1] for x in glob.glob(os.path.join(output_dir, f"Qout_*_52.nc"))])
     )
 
-    qout_1_51_files = sorted([os.path.join(rapid_output, f"Qout_{vpu}.nc") for vpu in vpu_nums])
-    qout_52_files = sorted(glob.glob(os.path.join(rapid_output, f"Qout_*_52.nc")))
-    zarr_file_path = os.path.join(rapid_output, f"Qout_{date}.zarr")
+    qout_1_51_files = sorted([os.path.join(output_dir, f"Qout_{vpu}.nc") for vpu in vpu_nums])
+    qout_52_files = sorted(glob.glob(os.path.join(output_dir, f"Qout_*_52.nc")))
+    zarr_file_path = os.path.join(output_dir, f"Qout_{date}.zarr")
 
     if os.path.exists(zarr_file_path):
         shutil.rmtree(zarr_file_path)
@@ -58,11 +58,11 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
         }
     }):
         logging.info("Opening ensembles 1-51 datasets")
-        with xr.open_mfdataset(qout_1_51_files, combine="nested", concat_dim="rivid") as ds151:
+        with xr.open_mfdataset(qout_1_51_files, combine="nested", concat_dim="river_id") as ds151:
             logging.info("Assigning the ensemble coordinate variable")
             ds151 = ds151.assign_coords(ensemble=np.arange(1, 52))
             logging.info("Opening ensemble 52 dataset")
-            with xr.open_mfdataset(qout_52_files, combine="nested", concat_dim="rivid") as ds52:
+            with xr.open_mfdataset(qout_52_files, combine="nested", concat_dim="river_id") as ds52:
                 logging.info("Assigning the ensemble coordinate variable")
                 ds52 = ds52.assign_coords(ensemble=52)
 
@@ -71,14 +71,14 @@ def netcdf_forecasts_to_zarr(workspace: str) -> None:
 
                 logging.info("Configuring compression")
                 compressor = Blosc(cname="zstd", clevel=3, shuffle=Blosc.BITSHUFFLE)
-                encoding = {'Qout': {"compressor": compressor}}
+                encoding = {'Q': {"compressor": compressor}}
                 logging.info("Writing to zarr")
                 (
                     ds
-                    .drop_vars(["crs", "lat", "lon", "time_bnds", "Qout_err"])
+                    .drop_vars(["crs", "lat", "lon", "time_bnds"], errors="ignore")
                     .chunk({
                         "time": -1,
-                        "rivid": "auto",
+                        "river_id": "auto",
                         "ensemble": -1
                     })
                     .to_zarr(

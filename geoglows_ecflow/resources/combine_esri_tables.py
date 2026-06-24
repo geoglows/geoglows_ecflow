@@ -13,7 +13,7 @@ def combine_esri_tables(workspace: str):
         step with rows from all VPUs
 
     Args:
-        workspace (str): Path to rapid_run.json base directory.
+        workspace (str): Path to forecast_run.json base directory.
 
     """
     # get path to tables from workspace

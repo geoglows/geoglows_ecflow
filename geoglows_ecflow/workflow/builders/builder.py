@@ -28,12 +28,12 @@ class Builder(GEOGLOWSBaseBuilder):
     ecflow_module = "geoglows_ecflow.workflow.parts.nodes"
 
     scripts = [
-        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/routing",
         "geoglows_ecflow/workflow/scripts/common",
     ]
 
     includes = [
-        "geoglows_ecflow/workflow/scripts/rapid",
+        "geoglows_ecflow/workflow/scripts/routing",
         "geoglows_ecflow/workflow/scripts/common",
     ]
 
@@ -117,13 +117,6 @@ class Builder(GEOGLOWSBaseBuilder):
             packages=["scripts"]
         )
 
-        n_build_petsc = Task("build_petsc")
-        if "cc" in self.config.get(
-            "jobs.destinations.default.host", default="lxc"
-        ):
-            n_build_petsc.add_defstatus(complete)
-        n_build_rapid = Task("build_rapid")
-        n_build_rapid.trigger = n_build_petsc.complete
         n_build_venv = Task("build_venv")
         n_packages.trigger = n_build_venv.complete
         n_statics = Task("install_static_data")
@@ -138,8 +131,6 @@ class Builder(GEOGLOWSBaseBuilder):
         n_make.add(
             Variable("SMSTRIES", 1),
             n_build_venv,
-            n_build_petsc,
-            n_build_rapid,
             n_packages,
             n_statics,
             n_initialize,
@@ -325,15 +316,6 @@ class Builder(GEOGLOWSBaseBuilder):
             n_diss_ip.add(Task("diss"))
             n_diss_ip.trigger = n_ret_ens.complete & n_ret_hr.complete
             n_diss.add(n_diss_ip)
-
-            n_diss_fc = Family("diss_fc")
-            n_diss_fc.add(Variable("CONTEXT", "rapid"))
-            n_diss_fc.defuser = e_no_diss
-            n_diss_fc.add(Task("diss"))
-            n_diss_fc.trigger = n_nc_to_zarr.complete & n_plain_table.complete & n_forecast_warnings.complete
-
-            if main_hh.get_variable("EMOS_BASE").value() != "12":
-                n_diss.add(n_diss_fc)
 
             n_web = Family("web_push")
             n_web.trigger = n_nc_to_zarr.complete & n_vpus.complete

@@ -43,7 +43,7 @@ if [[ $suite_mode == "prod" ]] || [[ $suite_mode == "test" ]];then
 
     for host in $hosts;do
 
-        srcdir=$ens_rapid_output
+        srcdir=$ens_output
         destdir=$destdir_root/forecasts
 
         ssh efas@$host "umask 002; mkdir -p $destdir"

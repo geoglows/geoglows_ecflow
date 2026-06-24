@@ -6,7 +6,6 @@ import os
 import sys
 import re
 import logging as log
-from glob import glob
 
 
 def create_logger(
@@ -67,7 +66,7 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
     Get a list of vpucodes from the input directory.
 
     Args:
-        input_directory (str): Path to the rapid input directory.
+        input_directory (str): Path to the per-VPU input directory.
 
     Returns:
         list[str]: List of valid directories (vpucodes).
@@ -81,28 +80,6 @@ def get_valid_vpucode_list(input_directory: str) -> list[str]:
         else:
             print(f"{name} is not a directory or a 3-digit VPU. Skipping...")
     return valid_input_directories
-
-
-def find_current_rapid_output(
-    forecast_directory: str, vpu: str | int
-) -> list | None:
-    """Finds output from RAPID for a specific VPU.
-
-    Args:
-        forecast_directory (str): Path to forecast directory.
-        vpu (str | int): VPU code.
-
-    Returns:
-        list | None: List of paths to RAPID output files or None if not found.
-    """
-    if os.path.exists(forecast_directory):
-        basin_files = glob(
-            os.path.join(forecast_directory, f"Qout_{vpu}_*.nc")
-        )
-        if len(basin_files) > 0:
-            return basin_files
-    # there are none found
-    return None
 
 
 def get_ensemble_number_from_forecast(forecast_name: str) -> int:

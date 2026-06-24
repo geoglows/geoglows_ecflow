@@ -3,7 +3,7 @@
 %includeonce <suite.h>
 %includeonce <deploy_config.h>
 %includeonce <comfies.h>
-%includeonce <rapid_venv.h>
+%includeonce <routing_venv.h>
 %includeonce <git.h>
 
 # Where is the source code of the package.

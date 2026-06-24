@@ -6,7 +6,7 @@
 %includeonce <ecflow_bash.h>
 %includeonce <python3.h>
 %includeonce <ens.h>
-%includeonce <rapid_venv.h>
+%includeonce <routing_venv.h>
 
 #python3 -m geoglows_ecflow.resources.archive_to_aws $ens_fcdir $suite_staticdata/aws_config.yml
 
