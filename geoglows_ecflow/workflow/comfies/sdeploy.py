@@ -42,8 +42,8 @@ from geoglows_ecflow.workflow.comfies.fs import (
 )
 from geoglows_ecflow.workflow.comfies.config import (
     Config,
-    PythonConfigFile,
-    PythonConfigPath,
+    YAMLConfigFile,
+    YAMLConfigPath,
 )
 from geoglows_ecflow.workflow.comfies.config import ConfigNotFoundError
 from geoglows_ecflow.workflow.comfies.config import (
@@ -412,14 +412,14 @@ def prepend_root_dirs(paths, roots):
     return new_paths
 
 
-class DeployConfigFile(PythonConfigFile):
+class DeployConfigFile(YAMLConfigFile):
     search_path = [
         os.getcwd(),
         os.path.join(os.environ["HOME"], ".comfies", "sdeploy"),
     ]
 
 
-class DeployConfigPath(PythonConfigPath):
+class DeployConfigPath(YAMLConfigPath):
     pass
 
 

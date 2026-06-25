@@ -21,7 +21,8 @@ river-route codebase, not the RAPID `main`.
 - **Mostly frozen:** `geoglows_ecflow/workflow/comfies/*` — vendored ECMWF
   framework code (Apache 2.0, ~4,700 lines). Left untouched except for the
   minimal Python-3.12+ compatibility fixes noted below (the suite could not be
-  imported at all without them).
+  imported at all without them) and the deploy-config format switch (see
+  Decisions: config format).
 
 ## Decisions
 
@@ -30,6 +31,16 @@ river-route codebase, not the RAPID `main`.
   forward to guard the builder refactor).
 - **HRES member:** high-resolution is always ensemble member **52**, kept as a
   single named constant `HRES_ENSEMBLE_MEMBER` rather than a configurable value.
+- **Config format:** the deploy config is now plain **YAML** instead of the old
+  `.cfg` (Python source executed via `SourceFileLoader`). `gdeploy` reads
+  `config.yaml`; `config.example.yaml` is the committed template. This is a
+  clean break — the Python-config path was removed, not kept as a fallback. It
+  required touching the otherwise-frozen comfies loader (`config.py`,
+  `sdeploy.py`): the broken `YAMLConfigFile` was repaired and a `YAMLConfigPath`
+  added; `PythonConfigFile`/`PythonConfigPath` and `_load_source` were deleted.
+  The `Config` wrapper and `builder.py` are unchanged — YAML loads into the same
+  nested-dict shape. Computed values the Python format allowed (f-strings,
+  variable reuse) must now be written out as literals.
 
 ---
 
