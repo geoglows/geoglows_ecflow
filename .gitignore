@@ -1,5 +1,8 @@
 # geoglows_ecflow
+# Deployment configs hold secrets and stay untracked; the example is tracked.
 *config.yml
+*config.yaml
+!config.example.yaml
 *ecflow_start.sh
 *data/
 *log/
@@ -7,7 +10,6 @@
 ecflow_home/
 *geoglows_forecast.def
 *.ecf.*
-*.cfg
 
 # pytest and coverage
 .coverage

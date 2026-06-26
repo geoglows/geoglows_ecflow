@@ -22,72 +22,68 @@ pip install -e .
 - nco>=5.1.8
 - ksh>=2020.0.0
 
-## geoglows_ecflow configuration file (config.cfg)
+## geoglows_ecflow configuration file (config.yaml)
 
-```python
-    name = 'suite_name'
-    srcroot = "/path/to/source"
-    first_date = first_barrier = 'YYYYMMDD'
-    vpu_list = []
-    mars_bond_id='251'
-    staticdata = '/path/to/assets'
-    workroot = f'/path/to/workroot'
-    mode = 'test'  # suite mode ('test':test, 'prod':production)
-    expver = 'geoglows'
-    exparch = '/path/to/archive'
-    iniexparch = '/path/to/init_archive'
-    mars_workers = '3'
-    script_extension = '.ecf'
+The deployment configuration is a plain YAML file. Copy
+[`config.example.yaml`](config.example.yaml) to `config.yaml` and edit the
+values for your environment (`config.yaml` is gitignored so secrets stay out
+of version control). Values like `%SCHOST:ab%` are ecFlow variables passed
+through verbatim, and `{includes}`/`{scripts}` are sdeploy search-path
+placeholders.
 
-    # suite's source code
-    source = dict(
-    root = srcroot,
-    builder = 'geoglows_ecflow.workflow.builders.builder',
-    includes = 'scripts/troika:suites/scripts/tems:{includes}',
-    scripts = 'scripts/tems:{scripts}'
-    )
+```yaml
+name: suite_name
+mode: test                 # 'test' or 'prod'
+first_date: "YYYYMMDD"
+first_barrier: "YYYYMMDD"
+vpu_list: []
+ens_members: 51
+mars_workers: 3
+script_extension: ".ecf"
 
-    # deploy location
-    target = dict(
-        root = "/path/to/deploy_location",
-    )
+expver: geoglows
+exparch: /path/to/archive
+iniexparch: /path/to/init_archive
+staticdata: /path/to/assets
+workroot: /path/to/workroot
 
-    # where to run computations
-    jobs = dict(
-        manager = dict(
-            name='troika',
-        ),
-        root = '/path/to/job_root',
-        limit = 26,
-        destinations = dict(
-            default = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = 'user_name',
-                queue = 'nf',
-                account = 'ECACCOUNT',
-                sthost = 'sthost',
-            ),
-            parallel = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = user,
-                queue = 'nf',
-                ncpus = '12',
-                mem = '1000',
-            )
-        )
-    )
+# suite's source code
+source:
+  root: /path/to/source
+  builder: geoglows_ecflow.workflow.builders.builder
+  includes: "scripts/troika:suites/scripts/tems:{includes}"
+  scripts: "scripts/tems:{scripts}"
 
-    # --------------------------------------------
-    # Configuration of GEOGloWS software packages
-    # which are installed together with the suite.
-    # --------------------------------------------
-    packages = dict(
-        scripts = dict(
-            srcdir = srcroot + 'scripts',
-        ),
-    )
+# deploy location
+target:
+  root: /path/to/deploy_location
+
+# where to run computations
+jobs:
+  manager:
+    name: troika
+  root: /path/to/job_root
+  limit: 26
+  destinations:
+    default:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      account: ECACCOUNT
+      sthost: sthost
+    parallel:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      ncpus: "12"
+      mem: "1000"
+
+# GEOGloWS software packages installed alongside the suite
+packages:
+  scripts:
+    srcdir: /path/to/source/scripts
 ```
 
 ## AWS configuration file (aws_config.yml)
@@ -117,12 +113,12 @@ ecflow_start.sh -d /path/to/ecflow_home
 Generate the suite definition (via CLI or Python):
 
 ```bash
-gdeploy --config /path/to/config.cfg
+gdeploy --config /path/to/config.yaml
 ```
 
 ```python
 from geoglows_ecflow.workflow.create import main
-main("/path/to/config.cfg")
+main("/path/to/config.yaml")
 ```
 
 Start a local ecflow server, then load and begin the suite:
