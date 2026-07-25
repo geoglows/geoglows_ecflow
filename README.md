@@ -86,6 +86,48 @@ packages:
     srcdir: /path/to/source/scripts
 ```
 
+## Troika job submission
+
+The suite submits jobs through [troika](https://github.com/ecmwf/troika), ECMWF's
+job-submission tool. On Atos, troika and its site configuration are provided by the
+system. To run **locally**, install the optional `troika` dependency and point the
+suite at a small local troika config.
+
+Install with the troika extra:
+
+```bash
+pip install .[troika]
+```
+
+Create a local troika config (copy [`troika.example.yml`](troika.example.yml) to
+`troika.yml`) that runs jobs as plain local processes. The **site name must match the
+`host`** used in the config's job destinations:
+
+```yaml
+sites:
+  localhost:
+    type: direct        # run the job directly (no SLURM/PBS)
+    connection: local   # on this machine (no ssh)
+```
+
+Then add `executable` and `config` to the `jobs.manager` block of your `config.yaml`:
+
+```yaml
+jobs:
+  manager:
+    name: troika
+    executable: /path/to/troika    # output of `which troika`
+    config: /path/to/troika.yml
+  # ...
+  destinations:
+    default:
+      host: localhost              # must match the site name in troika.yml
+      user: your_user
+```
+
+With that, deploying and running the suite (see *Local run example*) submits every task
+through troika as a local process.
+
 ## AWS configuration file (aws_config.yml)
 
 ```yaml

@@ -1,0 +1,10 @@
+# troika.example.yml -- minimal local job submission for troika.
+#
+# Copy this to "troika.yml" and point config.yaml's jobs.manager.config at it.
+# This runs every job as a plain local process (no SLURM/PBS, no ssh), which is
+# useful for testing the suite off-Atos. The site name must match the `host`
+# used in the config's job destinations (see README).
+sites:
+  localhost:
+    type: direct        # run the job directly (no scheduler)
+    connection: local   # on this machine (no ssh)
