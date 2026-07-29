@@ -1,0 +1,64 @@
+# Example deployment configuration for gdeploy.
+#
+# Copy this file to "config.yaml" (kept out of version control) and edit the
+# values for your environment, then deploy the suite with:
+#
+#     gdeploy --config /path/to/config.yaml
+#
+# This is plain data: every value is a literal. Unlike the old Python ".cfg"
+# format there is no variable reuse or f-strings, so paths are written out in
+# full. Values like "%SCHOST:ab%" are ecFlow variables and are passed through
+# verbatim; "{includes}"/"{scripts}" are sdeploy search-path placeholders.
+
+name: suite_name
+mode: test                 # 'test' or 'prod'
+first_date: "YYYYMMDD"
+first_barrier: "YYYYMMDD"
+vpu_list: []               # list at least one VPU code for a real run
+ens_members: 51
+mars_workers: 3
+script_extension: ".ecf"
+
+expver: geoglows
+exparch: /path/to/archive
+iniexparch: /path/to/init_archive
+staticdata: /path/to/assets
+workroot: /path/to/workroot
+
+# Suite source code
+source:
+  root: /path/to/source
+  builder: geoglows_ecflow.workflow.builders.builder
+  includes: "scripts/troika:suites/scripts/tems:{includes}"
+  scripts: "scripts/tems:{scripts}"
+
+# Deploy location
+target:
+  root: /path/to/deploy_location
+
+# Where to run computations
+jobs:
+  manager:
+    name: troika
+  root: /path/to/job_root
+  limit: 26
+  destinations:
+    default:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      account: ECACCOUNT
+      sthost: sthost
+    parallel:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      ncpus: "12"
+      mem: "1000"
+
+# GEOGloWS software packages installed alongside the suite
+packages:
+  scripts:
+    srcdir: /path/to/source/scripts

@@ -18,77 +18,115 @@ pip install -e .
 
 ## Non-Python Dependencies
 
-- ecflow>=5.11.3
+- ecflow>=5.11.3,<5.17
 - nco>=5.1.8
 - ksh>=2020.0.0
 
-## geoglows_ecflow configuration file (config.cfg)
+## geoglows_ecflow configuration file (config.yaml)
 
-```python
-    name = 'suite_name'
-    srcroot = "/path/to/source"
-    first_date = first_barrier = 'YYYYMMDD'
-    vpu_list = []
-    mars_bond_id='251'
-    staticdata = '/path/to/assets'
-    workroot = f'/path/to/workroot'
-    mode = 'test'  # suite mode ('rd':research, 'test':test, 'prod':production)
-    expver = 'geoglows'
-    exparch = '/path/to/archive'
-    iniexparch = '/path/to/init_archive'
-    mars_workers = '3'
-    script_extension = '.ecf'
+The deployment configuration is a plain YAML file. Copy
+[`config.example.yaml`](config.example.yaml) to `config.yaml` and edit the
+values for your environment (`config.yaml` is gitignored so secrets stay out
+of version control). Values like `%SCHOST:ab%` are ecFlow variables passed
+through verbatim, and `{includes}`/`{scripts}` are sdeploy search-path
+placeholders.
 
-    # suite's source code
-    source = dict(
-    root = srcroot,
-    builder = 'geoglows_ecflow.workflow.builders.builder',
-    includes = 'scripts/troika:suites/scripts/tems:{includes}',
-    scripts = 'scripts/tems:{scripts}'
-    )
+```yaml
+name: suite_name
+mode: test                 # 'test' or 'prod'
+first_date: "YYYYMMDD"
+first_barrier: "YYYYMMDD"
+vpu_list: []
+ens_members: 51
+mars_workers: 3
+script_extension: ".ecf"
 
-    # deploy location
-    target = dict(
-        root = "/path/to/deploy_location",
-    )
+expver: geoglows
+exparch: /path/to/archive
+iniexparch: /path/to/init_archive
+staticdata: /path/to/assets
+workroot: /path/to/workroot
 
-    # where to run computations
-    jobs = dict(
-        manager = dict(
-            name='troika',
-        ),
-        root = '/path/to/job_root',
-        limit = 26,
-        destinations = dict(
-            default = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = 'user_name',
-                queue = 'nf',
-                account = 'ECACCOUNT',
-                sthost = 'sthost',
-            ),
-            parallel = dict(
-                host = '%SCHOST:ab%',
-                bkup_host = '%SCHOST_BKUP%',
-                user = user,
-                queue = 'nf',
-                ncpus = '12',
-                mem = '1000',
-            )
-        )
-    )
+# suite's source code
+source:
+  root: /path/to/source
+  builder: geoglows_ecflow.workflow.builders.builder
+  includes: "scripts/troika:suites/scripts/tems:{includes}"
+  scripts: "scripts/tems:{scripts}"
 
-    # --------------------------------------------
-    # Configuration of EFAS software packages
-    # which are installed together with the suite.
-    # --------------------------------------------
-    packages = dict(
-        scripts = dict(
-            srcdir = srcroot + 'scripts',
-        ),
-    )
+# deploy location
+target:
+  root: /path/to/deploy_location
+
+# where to run computations
+jobs:
+  manager:
+    name: troika
+  root: /path/to/job_root
+  limit: 26
+  destinations:
+    default:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      account: ECACCOUNT
+      sthost: sthost
+    parallel:
+      host: "%SCHOST:ab%"
+      bkup_host: "%SCHOST_BKUP%"
+      user: user_name
+      queue: nf
+      ncpus: "12"
+      mem: "1000"
+
+# GEOGloWS software packages installed alongside the suite
+packages:
+  scripts:
+    srcdir: /path/to/source/scripts
 ```
+
+## Troika job submission
+
+The suite submits jobs through [troika](https://github.com/ecmwf/troika), ECMWF's
+job-submission tool. On Atos, troika and its site configuration are provided by the
+system. To run **locally**, install the optional `troika` dependency and point the
+suite at a small local troika config.
+
+Install with the troika extra:
+
+```bash
+pip install .[troika]
+```
+
+Create a local troika config (copy [`troika.example.yml`](troika.example.yml) to
+`troika.yml`) that runs jobs as plain local processes. The **site name must match the
+`host`** used in the config's job destinations:
+
+```yaml
+sites:
+  localhost:
+    type: direct        # run the job directly (no SLURM/PBS)
+    connection: local   # on this machine (no ssh)
+```
+
+Then add `executable` and `config` to the `jobs.manager` block of your `config.yaml`:
+
+```yaml
+jobs:
+  manager:
+    name: troika
+    executable: /path/to/troika    # output of `which troika`
+    config: /path/to/troika.yml
+  # ...
+  destinations:
+    default:
+      host: localhost              # must match the site name in troika.yml
+      user: your_user
+```
+
+With that, deploying and running the suite (see *Local run example*) submits every task
+through troika as a local process.
 
 ## AWS configuration file (aws_config.yml)
 
@@ -117,12 +155,12 @@ ecflow_start.sh -d /path/to/ecflow_home
 Generate the suite definition (via CLI or Python):
 
 ```bash
-gdeploy --config /path/to/config.cfg
+gdeploy --config /path/to/config.yaml
 ```
 
 ```python
 from geoglows_ecflow.workflow.create import main
-main("/path/to/config.cfg")
+main("/path/to/config.yaml")
 ```
 
 Start a local ecflow server, then load and begin the suite:

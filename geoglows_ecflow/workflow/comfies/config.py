@@ -13,12 +13,11 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 
 import os
-import sys
-import imp
 import collections.abc as collections
 
 import datetime
 import copy
+import yaml
 from .py2 import basestring
 
 # -----------------------------------
@@ -85,6 +84,10 @@ class ConfigFile(ConfigSource):
 
     def _find(self, name):
         for dir_ in self.search_path:
+            if dir_ is None:
+                # e.g. the default search path is [os.getenv('PWD')] and PWD
+                # is unset; skip rather than crash in os.path.join.
+                continue
             path = os.path.join(dir_, name+self.extension)
             if os.path.isfile(path):
                 return path
@@ -96,57 +99,41 @@ class ConfigFile(ConfigSource):
 
 
 
-class PythonConfigFile(ConfigFile):
-    """
-    Python config file
-    """
-    extension = '.cfg'
-    def _load(self, path):
-        try:
-            old_dont_write_bytecode = sys.dont_write_bytecode
-            sys.dont_write_bytecode = True
-            data = imp.load_source('_sdeploy_config_'+path, path).__dict__
-            sys.dont_write_bytecode = old_dont_write_bytecode
-        except IOError as e:
-            msg = path + ": " + e.strerror
-            raise ConfigLoadingError(msg)
-        except SyntaxError as e:
-            msg = path + ": " + str(e) + "\n" + e.text
-            raise ConfigLoadingError(msg)
-        except NameError as e:
-            msg = path + ": " + str(e)
-            raise ConfigLoadingError(msg)
-        return data
-
-
-
-class PythonConfigPath(PythonConfigFile):
-    """
-    Like PythonConfigFile but 'name' argument
-    in the constructor is treated as explicit
-    path to config file rather than config ID.
-    """
-    def _find(self, name):
-        if os.path.isfile(name):
-            return os.path.join(os.environ['PWD'],name)
-        msg = 'Cannot find "{}"'.format(name)
-        raise ConfigNotFoundError(msg)
-
-
-
 class YAMLConfigFile(ConfigFile):
     """
-    YAML config file (not tested much..)
+    YAML config file.
+
+    The file is parsed as plain data with ``yaml.safe_load``; the top level
+    must be a mapping of config keys (the same nested-dict shape the rest of
+    the config layer expects).
     """
     extension = '.yaml'
+
     def _load(self, path):
         try:
-            f = open(path)
+            with open(path) as f:
+                data = yaml.safe_load(f)
         except IOError as e:
-            msg = path + ": " + e.strerror
-            raise ConfigLoadingError(msg)
-        config_data = yaml.load(f)
+            raise ConfigLoadingError(path + ": " + e.strerror)
+        except yaml.YAMLError as e:
+            raise ConfigLoadingError(path + ": " + str(e))
+        if not isinstance(data, dict):
+            raise ConfigLoadingError(
+                path + ": top-level YAML must be a mapping of config keys"
+            )
         return data
+
+
+class YAMLConfigPath(YAMLConfigFile):
+    """
+    Like YAMLConfigFile but the 'name' argument in the constructor is treated
+    as an explicit path to the config file rather than a config ID.
+    """
+
+    def _find(self, name):
+        if os.path.isfile(name):
+            return os.path.abspath(name)
+        raise ConfigNotFoundError('Cannot find "{}"'.format(name))
 
 
 # ---------------------------------------------------------------------
